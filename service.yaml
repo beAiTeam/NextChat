@@ -1,0 +1,38 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  name: ${currentEnv}-next-chat-web
+  labels:
+    cloud.googleapis.com/location: us-central1
+spec:
+  template:
+    metadata:
+      annotations:
+        #run.googleapis.com/vpc-access-connector: cloud-run-inner
+        run.googleapis.com/startup-cpu-boost: "true"
+        # run.googleapis.com/cpu-throttling: "false"
+        #autoscaling.knative.dev/minScale: "1"
+        autoscaling.knative.dev/maxScale: "1"
+    spec:
+      containers:
+        - image: asia-east2-docker.pkg.dev/beaiteam/beaiteam-dev-docker/cloudrun-${currentEnv}-next-chat-web:${BUILD_NUMBER}
+          startupProbe:
+            httpGet:
+              path: /
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+            initialDelaySeconds: 10
+            timeoutSeconds: 10
+            failureThreshold: 5
+            periodSeconds: 10
+          ports:
+            - containerPort: 3000
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
