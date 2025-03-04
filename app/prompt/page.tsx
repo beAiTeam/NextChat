@@ -4,6 +4,8 @@ import { Table, Button, Modal, Form, Input, message, Popconfirm } from 'antd';
 import { useState, useEffect } from 'react';
 import axiosServices from '../utils/my-axios';
 import MainLayout from '../components/Layout';
+import { Path } from '../constant';
+import { useRouter } from 'next/navigation';
 
 interface PromptItem {
   _id: string;
@@ -22,6 +24,7 @@ const PromptPage = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingPrompt, setEditingPrompt] = useState<PromptItem | null>(null);
   const [form] = Form.useForm();
+  const router = useRouter();
 
   const fetchData = async (page: number, size: number) => {
     setLoading(true);
@@ -97,6 +100,19 @@ const PromptPage = () => {
     }
   };
 
+  const handleUseStrategy = (record: PromptItem) => {
+    // 保存到localStorage
+    localStorage.setItem('selectedPromptStrategy', JSON.stringify({
+      title: record.title,
+      content: record.content,
+      timestamp: Date.now()
+    }));
+
+    // 使用 router 跳转到聊天页面
+    router.push('/');
+    message.success('已应用该策略');
+  };
+
   const columns = [
     {
       title: '标题',
@@ -128,6 +144,9 @@ const PromptPage = () => {
         <>
           <Button type="link" onClick={() => handleEdit(record)}>
             编辑
+          </Button>
+          <Button type="link" onClick={() => handleUseStrategy(record)}>
+            使用此策略
           </Button>
           <Popconfirm
             title="确认删除"

@@ -10,10 +10,7 @@ const serverConfig = getServerSideConfig();
 
 export default function App() {
   const router = useRouter();
-
-  useEffect(() => {
-    router.push('/todo');
-  }, []);
+ 
 
   return (
     <>

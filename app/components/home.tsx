@@ -243,6 +243,55 @@ export function Home() {
     console.log("[Config] got config from build time", getClientConfig());
     useAccessStore.getState().fetch();
 
+    // 检查是否有保存的策略
+    const savedStrategy = localStorage.getItem('selectedPromptStrategy');
+    if (savedStrategy) {
+      try {
+        const strategy = JSON.parse(savedStrategy);
+        const useChatStore = require('../store/chat').useChatStore;
+        const createEmptyMask = require('../store/mask').createEmptyMask;
+        const useAppConfig = require('../store/config').useAppConfig;
+        
+        // 获取全局配置
+        const config = useAppConfig.getState();
+        const globalModelConfig = config.modelConfig;
+        
+        // 创建新的面具
+        const mask = {
+          ...createEmptyMask(),
+          id: Date.now().toString(),
+          avatar: "1f916",
+          name: strategy.title,
+          context: [{
+            id: Date.now().toString(),
+            role: "system",
+            content: strategy.content,
+            date: new Date().toISOString()
+          }],
+          syncGlobalConfig: true,
+          modelConfig: {
+            ...globalModelConfig,
+            sendMemory: true,
+            historyMessageCount: 4,
+            compressMessageLengthThreshold: 1000,
+            enableInjectSystemPrompts: true,
+            template: globalModelConfig.template || "",
+          },
+          lang: "cn",
+          builtin: false,
+          createdAt: Date.now(),
+        };
+
+        // 创建新会话并应用面具
+        useChatStore.getState().newSession(mask);
+        
+        // 清除已使用的策略
+        localStorage.removeItem('selectedPromptStrategy');
+      } catch (error) {
+        console.error('Error applying prompt strategy:', error);
+      }
+    }
+
     const initMcp = async () => {
       try {
         const enabled = await isMcpEnabled();

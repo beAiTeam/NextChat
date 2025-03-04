@@ -1,6 +1,6 @@
 import { Layout, Menu } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
-import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined } from '@ant-design/icons';
+import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 
 const { Sider, Content } = Layout;
@@ -24,6 +24,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       key: '/prompt',
       icon: <RobotOutlined />,
       label: 'Prompt管理',
+    },
+    {
+      key: '/',
+      icon: <MessageOutlined />,
+      label: 'Chat',
     },
   ];
 
