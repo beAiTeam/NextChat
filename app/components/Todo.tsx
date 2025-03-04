@@ -1,12 +1,13 @@
 "use client";
 
-import { Table, DatePicker } from "antd";
+import { Table, DatePicker, Button } from "antd";
 import { useEffect, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import './Todo.scss';
 import type { Dayjs } from 'dayjs';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 interface LotteryItem {
   _id: string;
@@ -74,6 +75,26 @@ const Todo = () => {
     setCurrentPage(1); // 重置页码
   };
 
+  const handleExportExcel = () => {
+    // 准备Excel数据
+    const exportData = data.map(item => ({
+      '序号': item.draw_number,
+      '号码': item.full_number || `${item.number_1}${item.number_2}${item.number_3}${item.number_4}${item.number_5}`,
+      '和值': item.sum_value,
+      '单双比': `${item.odd_count}单${item.even_count}双`,
+      '时间': new Date(item.draw_time * 1000).toLocaleString()
+    }));
+
+    // 创建工作簿
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Lottery数据");
+
+    // 导出Excel文件
+    XLSX.writeFile(wb, "lottery_data.xlsx");
+    toast.success('导出成功！');
+  };
+
   const columns = [
     {
       title: "序号",
@@ -122,12 +143,21 @@ const Todo = () => {
     <div className="lottery-container">
       <div className="lottery-header">
         <h1 className="lottery-title">Lottery记录</h1>
-        <RangePicker
-          showTime={{ format: 'HH:mm' }}
-          format="YYYY-MM-DD HH:mm"
-          onChange={handleTimeRangeChange}
-          className="lottery-time-picker"
-        />
+        <div className="lottery-controls">
+          <RangePicker
+            showTime={{ format: 'HH:mm' }}
+            format="YYYY-MM-DD HH:mm"
+            onChange={handleTimeRangeChange}
+            className="lottery-time-picker"
+          />
+          <Button 
+            type="primary" 
+            onClick={handleExportExcel}
+            className="export-button"
+          >
+            导出Excel
+          </Button>
+        </div>
       </div>
       <div className="lottery-table-container">
         <Table
