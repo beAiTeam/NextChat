@@ -4,7 +4,7 @@
   "scripts": {
     "mask": "npx tsx app/masks/build.ts",
     "mask:watch": "npx watch \"yarn mask\" app/masks",
-    "dev": "concurrently -r \"yarn run mask:watch\" \"next dev\"",
+    "dev": "concurrently -r \"yarn run mask:watch\" \"next dev -p 3456\" ",
     "build": "yarn mask && cross-env SKIP_TYPE_CHECK=1 DISABLE_ESLINT_PLUGIN=1 IGNORE_BUILD_ERROR=1 BUILD_MODE=standalone next build",
     "start": "next start",
     "lint": "next lint",
