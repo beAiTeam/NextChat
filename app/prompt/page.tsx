@@ -6,6 +6,7 @@ import axiosServices from '../utils/my-axios';
 import MainLayout from '../components/Layout';
 import { Path } from '../constant';
 import { useRouter } from 'next/navigation';
+import { safeLocalStorage } from "../utils";
 
 interface PromptItem {
   _id: string;
@@ -101,15 +102,13 @@ const PromptPage = () => {
   };
 
   const handleUseStrategy = (record: PromptItem) => {
-    // 保存到localStorage
-    localStorage.setItem('selectedPromptStrategy', JSON.stringify({
+    const storage = safeLocalStorage();
+    storage.setItem('selectedPromptStrategy', JSON.stringify({
       title: record.title,
       content: record.content,
       timestamp: Date.now()
     }));
-
-    // 使用 router 跳转到聊天页面
-    router.push('/');
+    router.push('/chat');
     message.success('已应用该策略');
   };
 

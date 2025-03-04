@@ -1,11 +1,11 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Input, Button, Card } from 'antd';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-const SecretPage = () => {
+const SecretPageContent = () => {
   const [secretKey, setSecretKey] = useState('');
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -53,6 +53,25 @@ const SecretPage = () => {
         </div>
       </Card>
     </div>
+  );
+};
+
+const SecretPage = () => {
+  return (
+    <Suspense fallback={
+      <div style={{
+        height: '100vh',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center'
+      }}>
+        <Card title="加载中..." style={{ width: 400 }}>
+          <div style={{ textAlign: 'center' }}>请稍候...</div>
+        </Card>
+      </div>
+    }>
+      <SecretPageContent />
+    </Suspense>
   );
 };
 

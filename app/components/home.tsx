@@ -8,7 +8,7 @@ import styles from "./home.module.scss";
 import BotIcon from "../icons/bot.svg";
 import LoadingIcon from "../icons/three-dots.svg";
 
-import { getCSSVar, useMobileScreen } from "../utils";
+import { getCSSVar, useMobileScreen, safeLocalStorage } from "../utils";
 
 import dynamic from "next/dynamic";
 import { Path, SlotID } from "../constant";
@@ -244,7 +244,8 @@ export function Home() {
     useAccessStore.getState().fetch();
 
     // 检查是否有保存的策略
-    const savedStrategy = localStorage.getItem('selectedPromptStrategy');
+    const storage = safeLocalStorage();
+    const savedStrategy = storage.getItem('selectedPromptStrategy');
     if (savedStrategy) {
       try {
         const strategy = JSON.parse(savedStrategy);
@@ -286,7 +287,7 @@ export function Home() {
         useChatStore.getState().newSession(mask);
         
         // 清除已使用的策略
-        localStorage.removeItem('selectedPromptStrategy');
+        storage.removeItem('selectedPromptStrategy');
       } catch (error) {
         console.error('Error applying prompt strategy:', error);
       }

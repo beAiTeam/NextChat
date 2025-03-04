@@ -19,7 +19,7 @@ import ar from "./ar";
 import bn from "./bn";
 import sk from "./sk";
 import { merge } from "../utils/merge";
-import { safeLocalStorage } from "@/app/utils";
+import { safeLocalStorage } from "../utils";
 
 import type { LocaleType } from "./cn";
 export type { LocaleType, PartialLocaleType } from "./cn";
@@ -76,8 +76,8 @@ export const ALL_LANG_OPTIONS: Record<Lang, string> = {
   sk: "Slovensky",
 };
 
-const LANG_KEY = "lang";
-const DEFAULT_LANG = "en";
+const LOCAL_KEY = "lang";
+const storage = safeLocalStorage();
 
 const fallbackLang = en;
 const targetLang = ALL_LANGS[getLang()] as LocaleType;
@@ -107,24 +107,22 @@ function getLanguage() {
     if (AllLangs.includes(locale.language as Lang)) {
       return locale.language as Lang;
     }
-    return DEFAULT_LANG;
+    return "en";
   } catch {
-    return DEFAULT_LANG;
+    return "en";
   }
 }
 
 export function getLang(): Lang {
-  const savedLang = getItem(LANG_KEY);
-
-  if (AllLangs.includes((savedLang ?? "") as Lang)) {
-    return savedLang as Lang;
+  try {
+    return (storage.getItem(LOCAL_KEY) as Lang) || getLanguage();
+  } catch {
+    return getLanguage();
   }
-
-  return getLanguage();
 }
 
 export function changeLang(lang: Lang) {
-  setItem(LANG_KEY, lang);
+  storage.setItem(LOCAL_KEY, lang);
   location.reload();
 }
 

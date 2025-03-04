@@ -814,7 +814,8 @@ export const useChatStore = createPersistStore(
       },
       async clearAllData() {
         await indexedDBStorage.clear();
-        localStorage.clear();
+        const storage = safeLocalStorage();
+        storage.clear();
         location.reload();
       },
       setLastInput(lastInput: string) {
