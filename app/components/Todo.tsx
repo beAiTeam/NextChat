@@ -44,8 +44,8 @@ const Todo = () => {
 
       // 添加时间范围参数
       if (timeRange[0] && timeRange[1]) {
-        params.lottery_start_time = Math.floor(timeRange[0].valueOf());
-        params.lottery_end_time = Math.floor(timeRange[1].valueOf());
+        params.lottery_start_time = Math.floor(timeRange[0].valueOf()/1000);
+        params.lottery_end_time = Math.floor(timeRange[1].valueOf()/1000);
       }
 
       const response = await axiosServices.get('/public/lot/get_lottery_data_by_page', {
