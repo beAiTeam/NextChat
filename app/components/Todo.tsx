@@ -1,9 +1,11 @@
 "use client";
 
-import { Table } from "antd";
+import { Table, DatePicker } from "antd";
 import { useEffect, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import './Todo.scss';
+import type { Dayjs } from 'dayjs';
+import type { RangePickerProps } from 'antd/es/date-picker';
 
 interface LotteryItem {
   _id: string;
@@ -22,21 +24,32 @@ interface LotteryItem {
   even_count: number;
 }
 
+const { RangePicker } = DatePicker;
+
 const Todo = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<LotteryItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
 
   const fetchData = async (page: number, size: number) => {
     setLoading(true);
     try {
+      const params: any = {
+        page,
+        page_size: size,
+      };
+
+      // 添加时间范围参数
+      if (timeRange[0] && timeRange[1]) {
+        params.lottery_start_time = Math.floor(timeRange[0].valueOf());
+        params.lottery_end_time = Math.floor(timeRange[1].valueOf());
+      }
+
       const response = await axiosServices.get('/public/lot/get_lottery_data_by_page', {
-        params: {
-          page,
-          page_size: size
-        }
+        params
       });
       setData(response.data.data.data);
       setTotal(response.data.data.total);
@@ -49,7 +62,16 @@ const Todo = () => {
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, timeRange]);
+
+  const handleTimeRangeChange: RangePickerProps['onChange'] = (dates) => {
+    if (dates) {
+      setTimeRange([dates[0], dates[1]]);
+    } else {
+      setTimeRange([null, null]);
+    }
+    setCurrentPage(1); // 重置页码
+  };
 
   const columns = [
     {
@@ -88,7 +110,15 @@ const Todo = () => {
 
   return (
     <div className="lottery-container">
-      <h1 className="lottery-title">Lottery记录</h1>
+      <div className="lottery-header">
+        <h1 className="lottery-title">Lottery记录</h1>
+        <RangePicker
+          showTime={{ format: 'HH:mm' }}
+          format="YYYY-MM-DD HH:mm"
+          onChange={handleTimeRangeChange}
+          className="lottery-time-picker"
+        />
+      </div>
       <div className="lottery-table-container">
         <Table
           loading={loading}

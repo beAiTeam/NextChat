@@ -1,4 +1,4 @@
-import axios from 'axios';
+import axios, { AxiosRequestConfig } from 'axios';
 // import { getAuthToken, removeAuthToken } from 'src/utils/token.utils.ts';
 import toast from 'react-hot-toast';
 import { MY_BASE_URL } from '../extra-constant';
@@ -10,12 +10,11 @@ const axiosServices = axios.create({
 // interceptor for http
 
 axiosServices.interceptors.request.use(
-  (config) => {
+  (config: AxiosRequestConfig) => {
     // const token = getAuthToken();
-    config.headers = {
-      ...config.headers,
-      // Authorization: `${token ? token : ''}`,
-    };
+    const headers = { ...config.headers };
+    // headers.Authorization = `${token ? token : ''}`;
+    config.headers = headers;
     return config;
   },
   (error) => {

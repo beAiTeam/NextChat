@@ -1,13 +1,25 @@
 .lottery-container {
-  padding: 1rem;
+  padding: 20px;
+  margin-top: 50px;
   height: 100vh;
   display: flex;
   flex-direction: column;
 
-  .lottery-title {
-    font-size: 1.5rem;
-    font-weight: bold;
+  .lottery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     margin-bottom: 1rem;
+
+    .lottery-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .lottery-time-picker {
+      min-width: 360px;
+    }
   }
 
   .lottery-table-container {
