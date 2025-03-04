@@ -1,6 +1,5 @@
 {
   "name": "nextchat",
-  "private": false,
   "license": "mit",
   "scripts": {
     "mask": "npx tsx app/masks/build.ts",
@@ -21,6 +20,7 @@
     "test:ci": "jest --ci"
   },
   "dependencies": {
+    "@ant-design/icons": "^5.6.1",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@hello-pangea/dnd": "^16.5.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
@@ -28,6 +28,7 @@
     "@svgr/webpack": "^6.5.1",
     "@vercel/analytics": "^0.1.11",
     "@vercel/speed-insights": "^1.0.2",
+    "antd": "^5.24.2",
     "axios": "^1.7.5",
     "clsx": "^2.1.1",
     "emoji-picker-react": "^4.9.2",
@@ -44,6 +45,7 @@
     "openapi-client-axios": "^7.5.5",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-hot-toast": "^2.5.2",
     "react-markdown": "^8.0.7",
     "react-router-dom": "^6.15.0",
     "rehype-highlight": "^6.0.0",
