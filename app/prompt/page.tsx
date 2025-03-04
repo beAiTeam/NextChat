@@ -108,7 +108,7 @@ const PromptPage = () => {
       content: record.content,
       timestamp: Date.now()
     }));
-    router.push('/chat');
+    router.push('/');
     message.success('已应用该策略');
   };
 
