@@ -133,7 +133,7 @@ const DEFAULT_ACCESS_STATE = {
   siliconflowApiKey: "",
 
   // server config
-  needCode: true,
+  needCode: false,
   hideUserApiKey: false,
   hideBalanceQuery: false,
   disableGPT4: false,
