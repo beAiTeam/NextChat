@@ -6,6 +6,7 @@ import axiosServices from "../utils/my-axios";
 import './Todo.scss';
 import type { Dayjs } from 'dayjs';
 import type { RangePickerProps } from 'antd/es/date-picker';
+import toast from 'react-hot-toast';
 
 interface LotteryItem {
   _id: string;
@@ -82,11 +83,20 @@ const Todo = () => {
     {
       title: "Number",
       key: "full_number",
-      render: (record: LotteryItem) => (
-        <span>
-          {record.number_1} {record.number_2} {record.number_3} {record.number_4} {record.number_5}
-        </span>
-      ),
+      render: (record: LotteryItem) => {
+        const numbers = record.full_number || `${record.number_1}${record.number_2}${record.number_3}${record.number_4}${record.number_5}`;
+        return (
+          <span 
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              navigator.clipboard.writeText(numbers);
+              toast.success('已复制到剪贴板');
+            }}
+          >
+            {numbers}
+          </span>
+        );
+      },
     },
     {
       title: "和值",
@@ -126,6 +136,7 @@ const Todo = () => {
           dataSource={data}
           rowKey="_id"
           scroll={{ y: 'calc(100vh - 250px)' }}
+          className="selectable-table"
           pagination={{
             current: currentPage,
             pageSize: pageSize,

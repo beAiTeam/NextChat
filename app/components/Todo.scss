@@ -9,7 +9,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 20px;
 
     .lottery-title {
       font-size: 1.5rem;
@@ -18,7 +18,7 @@
     }
 
     .lottery-time-picker {
-      min-width: 360px;
+      width: 360px;
     }
   }
 
@@ -41,6 +41,18 @@
         .ant-table-body {
           overflow: auto;
         }
+      }
+    }
+
+    .selectable-table {
+      user-select: text;
+      
+      td {
+        user-select: text;
+      }
+
+      .ant-table-cell span[style*="cursor: pointer"]:hover {
+        color: #1890ff;
       }
     }
   }
