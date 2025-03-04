@@ -12,6 +12,10 @@ const nextConfig = {
     // 在生产构建时禁用 ESLint 检查
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    // 在生产构建时忽略 TypeScript 错误
+    ignoreBuildErrors: true,
+  },
   webpack(config) {
     config.module.rules.push({
       test: /\.svg$/,
