@@ -3,6 +3,13 @@ import axios, { AxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 import { MY_BASE_URL } from '../extra-constant';
 
+// 获取cookie中的secret_key
+const getSecretKey = () => {
+  const cookies = document.cookie.split(';');
+  const secretKeyCookie = cookies.find(cookie => cookie.trim().startsWith('secret_key='));
+  return secretKeyCookie ? secretKeyCookie.split('=')[1].trim() : '';
+};
+
 const axiosServices = axios.create({
   baseURL: MY_BASE_URL,
 });
@@ -11,9 +18,9 @@ const axiosServices = axios.create({
 
 axiosServices.interceptors.request.use(
   (config: AxiosRequestConfig) => {
-    // const token = getAuthToken();
     const headers = { ...config.headers };
-    // headers.Authorization = `${token ? token : ''}`;
+    const secretKey = getSecretKey();
+    headers.Authorization = secretKey ? secretKey : '';
     config.headers = headers;
     return config;
   },
@@ -41,21 +48,19 @@ axiosServices.interceptors.response.use(
       toast.error('参数校验错误 请检查填写内容');
     }
 
-    if (
-      (error.response && error.response.status === 401) ||
-      (error.response && error.response.status === 403)
-    ) {
-      // toast.error('登录失效,请重新登录');
-      // removeAuthToken();
-      // 有public的接口，可以先考虑直接刷新页面 后续根据优化再跳转login等
-      console.log('window.location.pathname', window.location.pathname);
-      // 判断当前路径决定是否跳转登录页
-      if (window.location.pathname.startsWith('/home/tools')) {
-        window.location.reload();
-      } else {
-        window.location.href = '/auth/login';
+    if (error.response && (error.response.status === 401 || error.response.status === 403)) {
+      // 检查是否是secret key验证失败的情况
+      if (error.response.data?.detail?.msg === 'Could not validate credentials') {
+        // 移除cookie
+        document.cookie = 'secret_key=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        // 跳转到secret页面
+        window.location.href = '/secret';
+        return Promise.reject(error);
       }
+
+       
     }
+ 
     return Promise.reject(error);
   },
 );

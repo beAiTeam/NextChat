@@ -1,6 +1,6 @@
 "use client";
 
-import { Table, DatePicker, Button } from "antd";
+import { Table, DatePicker, Button, Input, Card, Row, Col, Statistic, Modal } from "antd";
 import { useEffect, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import './Todo.scss';
@@ -8,6 +8,7 @@ import type { Dayjs } from 'dayjs';
 import type { RangePickerProps } from 'antd/es/date-picker';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+import MainLayout from './Layout';
 
 interface LotteryItem {
   _id: string;
@@ -26,6 +27,21 @@ interface LotteryItem {
   even_count: number;
 }
 
+interface AnalysisData {
+  total_periods: number;
+  analysis_time: string;
+  positions: {
+    [key: string]: {
+      statistics: Array<{ number: number; count: number; frequency: number }>;
+      hot_numbers: Array<{ number: number; count: number; frequency: number }>;
+      cold_numbers: Array<{ number: number; count: number; frequency: number }>;
+    };
+  };
+  overall_statistics: Array<{ number: number; total_count: number; overall_frequency: number }>;
+  global_hot_numbers: Array<{ number: number; total_count: number; overall_frequency: number }>;
+  global_cold_numbers: Array<{ number: number; total_count: number; overall_frequency: number }>;
+}
+
 const { RangePicker } = DatePicker;
 
 const Todo = () => {
@@ -35,6 +51,10 @@ const Todo = () => {
   const [data, setData] = useState<LotteryItem[]>([]);
   const [total, setTotal] = useState(0);
   const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
+  const [lastNPeriods, setLastNPeriods] = useState(100);
+  const [analysisData, setAnalysisData] = useState<AnalysisData | null>(null);
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+  const [isAnalysisModalVisible, setIsAnalysisModalVisible] = useState(false);
 
   const fetchData = async (page: number, size: number) => {
     setLoading(true);
@@ -50,7 +70,7 @@ const Todo = () => {
         params.lottery_end_time = Math.floor(timeRange[1].valueOf()/1000);
       }
 
-      const response = await axiosServices.get('/public/lot/get_lottery_data_by_page', {
+      const response = await axiosServices.get('/client/lot/get_lottery_data_by_page', {
         params
       });
       setData(response.data.data.data);
@@ -59,6 +79,21 @@ const Todo = () => {
       console.error('获取数据失败:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAnalysisData = async (periods: number) => {
+    setAnalysisLoading(true);
+    try {
+      const response = await axiosServices.get('/client/lot/get_lottery_analyze_all_numbers', {
+        params: { last_n_periods: periods }
+      });
+      setAnalysisData(response.data.data);
+    } catch (error) {
+      console.error('获取分析数据失败:', error);
+      toast.error('获取分析数据失败');
+    } finally {
+      setAnalysisLoading(false);
     }
   };
 
@@ -75,6 +110,15 @@ const Todo = () => {
     setCurrentPage(1); // 重置页码
   };
 
+  const showAnalysisModal = () => {
+    setIsAnalysisModalVisible(true);
+    fetchAnalysisData(lastNPeriods);
+  };
+
+  const handleAnalysisModalCancel = () => {
+    setIsAnalysisModalVisible(false);
+  };
+
   const handleExportExcel = () => {
     // 准备Excel数据
     const exportData = data.map(item => ({
@@ -88,10 +132,10 @@ const Todo = () => {
     // 创建工作簿
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Lottery数据");
+    XLSX.utils.book_append_sheet(wb, ws, "数据");
 
     // 导出Excel文件
-    XLSX.writeFile(wb, "lottery_data.xlsx");
+    XLSX.writeFile(wb, "data.xlsx");
     toast.success('导出成功！');
   };
 
@@ -140,48 +184,170 @@ const Todo = () => {
   ];
 
   return (
-    <div className="lottery-container">
-      <div className="lottery-header">
-        <h1 className="lottery-title">Lottery记录</h1>
-        <div className="lottery-controls">
-          <RangePicker
-            showTime={{ format: 'HH:mm' }}
-            format="YYYY-MM-DD HH:mm"
-            onChange={handleTimeRangeChange}
-            className="lottery-time-picker"
+    <MainLayout>
+      <div className="lottery-container">
+        <div className="lottery-header">
+          <h1 className="lottery-title">Lottery记录</h1>
+          <div className="lottery-controls">
+            <RangePicker
+              showTime={{ format: 'HH:mm' }}
+              format="YYYY-MM-DD HH:mm"
+              onChange={handleTimeRangeChange}
+              className="lottery-time-picker"
+            />
+            <Button 
+              onClick={showAnalysisModal}
+            >
+              数据分析
+            </Button>
+            <Button 
+              type="primary" 
+              onClick={handleExportExcel}
+              className="export-button"
+            >
+              导出Excel
+            </Button>
+          </div>
+        </div>
+
+        <Modal
+          title="数据分析"
+          open={isAnalysisModalVisible}
+          onCancel={handleAnalysisModalCancel}
+          width={1000}
+          footer={[
+            <div key="footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <Input
+                  type="number"
+                  value={lastNPeriods}
+                  onChange={(e) => setLastNPeriods(Number(e.target.value))}
+                  style={{ width: 120 }}
+                  placeholder="分析期数"
+                />
+                <Button 
+                  type="primary"
+                  onClick={() => fetchAnalysisData(lastNPeriods)}
+                  loading={analysisLoading}
+                >
+                  重新分析
+                </Button>
+              </div>
+              <Button onClick={handleAnalysisModalCancel}>关闭</Button>
+            </div>
+          ]}
+        >
+          {analysisData && (
+            <div className="analysis-content">
+              <Row gutter={[16, 16]}>
+                <Col span={24}>
+                  <Card title="总体统计" loading={analysisLoading}>
+                    <Row gutter={16}>
+                      <Col span={8}>
+                        <Statistic title="分析期数" value={analysisData.total_periods} />
+                      </Col>
+                      <Col span={8}>
+                        <Statistic title="分析时间" value={analysisData.analysis_time} />
+                      </Col>
+                    </Row>
+                  </Card>
+                </Col>
+
+                {/* 位置统计 */}
+                {Object.entries(analysisData.positions).map(([position, data]) => (
+                  <Col span={24} key={position}>
+                    <Card title={`位置${position.split('_')[1]}统计`} loading={analysisLoading}>
+                      <Row gutter={16}>
+                        <Col span={8}>
+                          <Card type="inner" title="热门号码">
+                            {data.hot_numbers.slice(0, 5).map((item, index) => (
+                              <div key={index}>
+                                号码 {item.number}: {item.count}次 ({item.frequency}%)
+                              </div>
+                            ))}
+                          </Card>
+                        </Col>
+                        <Col span={8}>
+                          <Card type="inner" title="冷门号码">
+                            {data.cold_numbers.slice(0, 5).map((item, index) => (
+                              <div key={index}>
+                                号码 {item.number}: {item.count}次 ({item.frequency}%)
+                              </div>
+                            ))}
+                          </Card>
+                        </Col>
+                        <Col span={8}>
+                          <Card type="inner" title="整体统计">
+                            {data.statistics.slice(0, 5).map((item, index) => (
+                              <div key={index}>
+                                号码 {item.number}: {item.count}次 ({item.frequency}%)
+                              </div>
+                            ))}
+                          </Card>
+                        </Col>
+                      </Row>
+                    </Card>
+                  </Col>
+                ))}
+                
+                <Col span={8}>
+                  <Card title="全局热门号码" loading={analysisLoading}>
+                    {analysisData.global_hot_numbers.slice(0, 5).map((item, index) => (
+                      <div key={index}>
+                        号码 {item.number}: {item.total_count}次 ({item.overall_frequency}%)
+                      </div>
+                    ))}
+                  </Card>
+                </Col>
+                
+                <Col span={8}>
+                  <Card title="全局冷门号码" loading={analysisLoading}>
+                    {analysisData.global_cold_numbers.slice(0, 5).map((item, index) => (
+                      <div key={index}>
+                        号码 {item.number}: {item.total_count}次 ({item.overall_frequency}%)
+                      </div>
+                    ))}
+                  </Card>
+                </Col>
+                
+                <Col span={8}>
+                  <Card title="整体统计" loading={analysisLoading}>
+                    {analysisData.overall_statistics.slice(0, 5).map((item, index) => (
+                      <div key={index}>
+                        号码 {item.number}: {item.total_count}次 ({item.overall_frequency}%)
+                      </div>
+                    ))}
+                  </Card>
+                </Col>
+              </Row>
+            </div>
+          )}
+        </Modal>
+
+        <div className="lottery-table-container" >
+          <Table
+            loading={loading}
+            columns={columns}
+            dataSource={data}
+            rowKey="_id"
+            scroll={{ y: 'calc(100vh - 250px)' }}
+            className="selectable-table"
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: total,
+              onChange: (page, size) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50', '100','500','1000'],
+              showTotal: (total) => `共 ${total} 条数据`,
+            }}
           />
-          <Button 
-            type="primary" 
-            onClick={handleExportExcel}
-            className="export-button"
-          >
-            导出Excel
-          </Button>
         </div>
       </div>
-      <div className="lottery-table-container">
-        <Table
-          loading={loading}
-          columns={columns}
-          dataSource={data}
-          rowKey="_id"
-          scroll={{ y: 'calc(100vh - 250px)' }}
-          className="selectable-table"
-          pagination={{
-            current: currentPage,
-            pageSize: pageSize,
-            total: total,
-            onChange: (page, size) => {
-              setCurrentPage(page);
-              setPageSize(size);
-            },
-            showSizeChanger: true,
-            pageSizeOptions: ['10', '20', '50', '100','500','1000'],
-            showTotal: (total) => `共 ${total} 条数据`,
-          }}
-        />
-      </div>
-    </div>
+    </MainLayout>
   );
 };
 

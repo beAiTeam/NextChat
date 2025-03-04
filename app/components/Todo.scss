@@ -1,15 +1,17 @@
 .lottery-container {
   padding: 20px;
-  margin-top: 50px;
-  height: 100vh;
+  height: calc(100vh - 112px);
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
 
   .lottery-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    flex-shrink: 0;
 
     .lottery-title {
       font-size: 1.5rem;
@@ -32,18 +34,35 @@
     }
   }
 
+  .analysis-content {
+    .ant-card {
+      height: 100%;
+      
+      .ant-card-body {
+        > div {
+          margin-bottom: 8px;
+          
+          &:last-child {
+            margin-bottom: 0;
+          }
+        }
+      }
+    }
+  }
+
   .lottery-table-container {
     flex: 1;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     background: #fff;
     padding: 24px;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: auto;
 
     .ant-table-wrapper {
-      flex: 1;
-      overflow: auto;
+      height: 100%;
       
       .ant-table {
         height: 100%;
@@ -53,7 +72,8 @@
         }
         
         .ant-table-body {
-          overflow: auto;
+          max-height: calc(100vh - 350px) !important;
+          overflow-y: auto !important;
         }
       }
     }
