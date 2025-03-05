@@ -56,6 +56,48 @@ const Todo = () => {
   const [analysisLoading, setAnalysisLoading] = useState(false);
   const [isAnalysisModalVisible, setIsAnalysisModalVisible] = useState(false);
 
+  const formatAnalysisDataToText = (data: AnalysisData): string => {
+    let text = `分析报告\n`;
+    text += `总体统计：\n`;
+    text += `分析期数：${data.total_periods}\n`;
+    text += `分析时间：${data.analysis_time}\n\n`;
+
+    // 位置统计
+    Object.entries(data.positions).forEach(([position, posData]) => {
+      text += `位置${position.split('_')[1]}统计：\n`;
+      text += `热门号码：\n`;
+      posData.hot_numbers.slice(0, 5).forEach(item => {
+        text += `  号码 ${item.number}: ${item.count}次 (${item.frequency}%)\n`;
+      });
+      text += `冷门号码：\n`;
+      posData.cold_numbers.slice(0, 5).forEach(item => {
+        text += `  号码 ${item.number}: ${item.count}次 (${item.frequency}%)\n`;
+      });
+      text += `整体统计：\n`;
+      posData.statistics.slice(0, 5).forEach(item => {
+        text += `  号码 ${item.number}: ${item.count}次 (${item.frequency}%)\n`;
+      });
+      text += '\n';
+    });
+
+    text += `全局热门号码：\n`;
+    data.global_hot_numbers.slice(0, 5).forEach(item => {
+      text += `  号码 ${item.number}: ${item.total_count}次 (${item.overall_frequency}%)\n`;
+    });
+
+    text += `\n全局冷门号码：\n`;
+    data.global_cold_numbers.slice(0, 5).forEach(item => {
+      text += `  号码 ${item.number}: ${item.total_count}次 (${item.overall_frequency}%)\n`;
+    });
+
+    text += `\n整体统计：\n`;
+    data.overall_statistics.slice(0, 5).forEach(item => {
+      text += `  号码 ${item.number}: ${item.total_count}次 (${item.overall_frequency}%)\n`;
+    });
+
+    return text;
+  };
+
   const fetchData = async (page: number, size: number) => {
     setLoading(true);
     try {
@@ -232,6 +274,17 @@ const Todo = () => {
                 >
                   重新分析
                 </Button>
+                {analysisData && (
+                  <Button
+                    onClick={() => {
+                      const text = formatAnalysisDataToText(analysisData);
+                      navigator.clipboard.writeText(text);
+                      toast.success('分析数据已复制到剪贴板');
+                    }}
+                  >
+                    复制分析数据
+                  </Button>
+                )}
               </div>
               <Button onClick={handleAnalysisModalCancel}>关闭</Button>
             </div>

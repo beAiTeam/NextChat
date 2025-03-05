@@ -20,7 +20,7 @@ const SecretPageContent = () => {
     document.cookie = `secret_key=${secretKey}; path=/`;
     
     // 从 URL 参数获取返回路径
-    const returnPath = searchParams.get('from') || '/';
+    const returnPath = searchParams.get('from') || '/todo';
     console.log('准备跳转到:', returnPath);
     
     try {
