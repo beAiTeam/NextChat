@@ -253,13 +253,11 @@ const Todo = () => {
         </div>
 
         <Modal
-          title="数据分析"
-          open={isAnalysisModalVisible}
-          onCancel={handleAnalysisModalCancel}
-          width={1000}
-          footer={[
-            <div key="footer" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <span>数据分析</span>
+              <div style={{ display: 'flex', gap: '8px',marginRight:30, alignItems: 'center' }}>
+                <span>分析期数:</span>
                 <Input
                   type="number"
                   value={lastNPeriods}
@@ -286,6 +284,13 @@ const Todo = () => {
                   </Button>
                 )}
               </div>
+            </div>
+          }
+          open={isAnalysisModalVisible}
+          onCancel={handleAnalysisModalCancel}
+          width={1000}
+          footer={[
+            <div key="footer" style={{ display: 'flex', justifyContent: 'flex-end' }}>
               <Button onClick={handleAnalysisModalCancel}>关闭</Button>
             </div>
           ]}
