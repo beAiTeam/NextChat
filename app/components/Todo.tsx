@@ -40,6 +40,11 @@ interface AnalysisData {
   overall_statistics: Array<{ number: number; total_count: number; overall_frequency: number }>;
   global_hot_numbers: Array<{ number: number; total_count: number; overall_frequency: number }>;
   global_cold_numbers: Array<{ number: number; total_count: number; overall_frequency: number }>;
+  sum_statistics: {
+    specific_sums: { [key: string]: number };
+    sum_ranges: { [key: string]: number };
+    sum_ranges_percentage: { [key: string]: number };
+  };
 }
 
 const { RangePicker } = DatePicker;
@@ -81,12 +86,12 @@ const Todo = () => {
     });
 
     text += `全局热门号码：\n`;
-    data.global_hot_numbers.slice(0, 5).forEach(item => {
+    data.global_hot_numbers.forEach(item => {
       text += `  号码 ${item.number}: ${item.total_count}次 (${item.overall_frequency}%)\n`;
     });
 
     text += `\n全局冷门号码：\n`;
-    data.global_cold_numbers.slice(0, 5).forEach(item => {
+    data.global_cold_numbers.forEach(item => {
       text += `  号码 ${item.number}: ${item.total_count}次 (${item.overall_frequency}%)\n`;
     });
 
@@ -94,6 +99,23 @@ const Todo = () => {
     data.overall_statistics.slice(0, 5).forEach(item => {
       text += `  号码 ${item.number}: ${item.total_count}次 (${item.overall_frequency}%)\n`;
     });
+
+    text += `\n和值统计：\n`;
+    text += `具体和值出现次数（前10）：\n`;
+    Object.entries(data.sum_statistics.specific_sums)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 10)
+      .forEach(([sum, count]) => {
+        text += `  和值 ${sum}: ${count}次\n`;
+      });
+
+    text += `\n和值区间统计：\n`;
+    Object.entries(data.sum_statistics.sum_ranges)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([range, count]) => {
+        const percentage = data.sum_statistics.sum_ranges_percentage[range];
+        text += `  区间 ${range}: ${count}次 (${percentage}%)\n`;
+      });
 
     return text;
   };
@@ -375,6 +397,40 @@ const Todo = () => {
                         号码 {item.number}: {item.total_count}次 ({item.overall_frequency}%)
                       </div>
                     ))}
+                  </Card>
+                </Col>
+
+                {/* 和值统计 */}
+                <Col span={24}>
+                  <Card title="和值统计" loading={analysisLoading}>
+                    <Row gutter={16}>
+                      <Col span={12}>
+                        <Card type="inner" title="具体和值出现次数（前10）">
+                          {Object.entries(analysisData.sum_statistics.specific_sums)
+                            .sort(([, a], [, b]) => b - a)
+                            .slice(0, 10)
+                            .map(([sum, count], index) => (
+                              <div key={index}>
+                                和值 {sum}: {count}次
+                              </div>
+                            ))}
+                        </Card>
+                      </Col>
+                      <Col span={12}>
+                        <Card type="inner" title="和值区间统计">
+                          {Object.entries(analysisData.sum_statistics.sum_ranges)
+                            .sort(([, a], [, b]) => b - a)
+                            .map(([range, count], index) => {
+                              const percentage = analysisData.sum_statistics.sum_ranges_percentage[range];
+                              return (
+                                <div key={index}>
+                                  区间 {range}: {count}次 ({percentage}%)
+                                </div>
+                              );
+                            })}
+                        </Card>
+                      </Col>
+                    </Row>
                   </Card>
                 </Col>
               </Row>
