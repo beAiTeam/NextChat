@@ -9,6 +9,7 @@ import type { RangePickerProps } from 'antd/es/date-picker';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import MainLayout from './Layout';
+import { ReloadOutlined } from '@ant-design/icons';
 
 interface LotteryItem {
   _id: string;
@@ -51,7 +52,11 @@ const { RangePicker } = DatePicker;
 
 const Todo = () => {
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
+  const [pageSize, setPageSize] = useState(() => {
+    // 尝试从localStorage读取保存的pageSize
+    const savedPageSize = localStorage.getItem('lottery_page_size');
+    return savedPageSize ? parseInt(savedPageSize) : 100;
+  });
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<LotteryItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -165,6 +170,11 @@ const Todo = () => {
     fetchData(currentPage, pageSize);
   }, [currentPage, pageSize, timeRange]);
 
+  // 当pageSize变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem('lottery_page_size', pageSize.toString());
+  }, [pageSize]);
+
   const handleTimeRangeChange: RangePickerProps['onChange'] = (dates) => {
     if (dates) {
       setTimeRange([dates[0], dates[1]]);
@@ -201,6 +211,12 @@ const Todo = () => {
     // 导出Excel文件
     XLSX.writeFile(wb, "data.xlsx");
     toast.success('导出成功！');
+  };
+
+  // 添加刷新函数
+  const handleRefresh = () => {
+    setCurrentPage(1); // 重置页码为1
+    fetchData(1, pageSize); // 刷新数据
   };
 
   const columns = [
@@ -270,6 +286,12 @@ const Todo = () => {
               className="export-button"
             >
               导出Excel
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+            >
+              刷新
             </Button>
           </div>
         </div>
@@ -455,7 +477,7 @@ const Todo = () => {
                 setPageSize(size);
               },
               showSizeChanger: true,
-              pageSizeOptions: ['10', '20', '50', '100','500','1000'],
+              pageSizeOptions: ['8','10', '20', '50', '100','500','1000'],
               showTotal: (total) => `共 ${total} 条数据`,
             }}
           />
