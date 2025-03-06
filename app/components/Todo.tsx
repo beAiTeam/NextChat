@@ -10,6 +10,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import MainLayout from './Layout';
 import { ReloadOutlined } from '@ant-design/icons';
+import { safeLocalStorage } from "../utils";
 
 interface LotteryItem {
   _id: string;
@@ -51,6 +52,7 @@ interface AnalysisData {
 const { RangePicker } = DatePicker;
 
 const Todo = () => {
+  const localStorage = safeLocalStorage();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
     // 尝试从localStorage读取保存的pageSize
@@ -165,6 +167,7 @@ const Todo = () => {
       setAnalysisLoading(false);
     }
   };
+ 
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
