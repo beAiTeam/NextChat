@@ -185,31 +185,44 @@ const Predict = () => {
   };
 
   // 渲染带有高亮的预测结果
-  const renderHighlightedPrediction = (prediction: string, drawResults: DrawResult[] | null) => {
+  const renderHighlightedPrediction = (prediction: string, drawResults: DrawResult[] | null, guessPeriod?: string) => {
     if (!drawResults || drawResults.length === 0 || prediction === "暂无结果") {
       return prediction;
     }
     
-    // 找出最匹配的开奖结果
-    let bestMatchDrawResult = drawResults[0];
-    let maxCommonCount = 0;
+    // 首先尝试找到与期号匹配的开奖结果
+    let bestMatchDrawResult: DrawResult | null = null;
     
-    for (const drawResult of drawResults) {
-      const commonIndexes = getCommonDigits(prediction, drawResult.full_number);
-      if (commonIndexes.length > maxCommonCount) {
-        maxCommonCount = commonIndexes.length;
-        bestMatchDrawResult = drawResult;
-      }
+    if (guessPeriod) {
+      bestMatchDrawResult = drawResults.find(result => result.draw_number === guessPeriod) || null;
     }
     
-    const commonIndexes = getCommonDigits(prediction, bestMatchDrawResult.full_number);
+    // 如果没有找到匹配的期号，则寻找最匹配的开奖结果
+    if (!bestMatchDrawResult) {
+      bestMatchDrawResult = drawResults[0];
+      let maxCommonCount = 0;
+      
+      for (const drawResult of drawResults) {
+        let commonCount = 0;
+        for (let i = 0; i < prediction.length; i++) {
+          if (drawResult.full_number.includes(prediction[i])) {
+            commonCount++;
+          }
+        }
+        
+        if (commonCount > maxCommonCount) {
+          maxCommonCount = commonCount;
+          bestMatchDrawResult = drawResult;
+        }
+      }
+    }
     
     return (
       <span>
         {prediction.split('').map((digit, index) => (
           <span 
             key={index} 
-            className={commonIndexes.includes(index) ? 'highlighted-digit' : ''}
+            className={bestMatchDrawResult.full_number.includes(digit) ? 'highlighted-digit' : ''}
           >
             {digit}
           </span>
@@ -303,7 +316,7 @@ const Predict = () => {
               toast.success('已复制到剪贴板');
             }}
           >
-            {renderHighlightedPrediction(resultText, record.ext_result)}
+            {renderHighlightedPrediction(resultText, record.ext_result, record.guess_period)}
           </span>
         );
       },
