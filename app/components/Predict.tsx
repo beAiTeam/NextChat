@@ -130,7 +130,7 @@ const Predict = () => {
       case 'created':
         return <Tag color="blue">待预测</Tag>;
       case 'drawed':
-        return <Tag color="cyan">已开奖</Tag>;
+        return <Tag color="cyan">已开</Tag>;
       case 'executing':
         return <Tag color="processing">执行中</Tag>;
       case 'finished':
@@ -190,43 +190,41 @@ const Predict = () => {
       return prediction;
     }
     
-    // 首先尝试找到与期号匹配的开奖结果
-    let bestMatchDrawResult: DrawResult | null = null;
-    
-    if (guessPeriod) {
-      bestMatchDrawResult = drawResults.find(result => result.draw_number === guessPeriod) || null;
-    }
-    
-    // 如果没有找到匹配的期号，则寻找最匹配的开奖结果
-    if (!bestMatchDrawResult) {
-      bestMatchDrawResult = drawResults[0];
-      let maxCommonCount = 0;
-      
-      for (const drawResult of drawResults) {
-        let commonCount = 0;
-        for (let i = 0; i < prediction.length; i++) {
-          if (drawResult.full_number.includes(prediction[i])) {
-            commonCount++;
-          }
-        }
-        
-        if (commonCount > maxCommonCount) {
-          maxCommonCount = commonCount;
-          bestMatchDrawResult = drawResult;
-        }
-      }
-    }
-    
     return (
       <span>
-        {prediction.split('').map((digit, index) => (
-          <span 
-            key={index} 
-            className={bestMatchDrawResult.full_number.includes(digit) ? 'highlighted-digit' : ''}
-          >
-            {digit}
-          </span>
-        ))}
+        {prediction.split('').map((digit, index) => {
+          // 判断是否应该高亮（数字在任意一个开奖结果中出现）
+          let shouldHighlight = false;
+          for (const drawResult of drawResults) {
+            if (drawResult.full_number.includes(digit)) {
+              shouldHighlight = true;
+              break;
+            }
+          }
+          
+          // 判断是否应该使用金色高亮（第一位数字与任何一期开奖结果的第一位数字相同）
+          let isGoldHighlight = false;
+          if (index === 0) {
+            // 检查所有开奖结果
+            for (const drawResult of drawResults) {
+              if (drawResult.full_number[0] === digit) {
+                isGoldHighlight = true;
+                break;
+              }
+            }
+          }
+          
+          return (
+            <span 
+              key={index} 
+              className={shouldHighlight 
+                ? (isGoldHighlight ? 'highlighted-digit-gold' : 'highlighted-digit') 
+                : ''}
+            >
+              {digit}
+            </span>
+          );
+        })}
       </span>
     );
   };
@@ -237,37 +235,42 @@ const Predict = () => {
       return "暂无结果";
     }
     
-    // 查找与预测期号匹配的开奖结果
-    const matchedDrawResult = record.ext_result.find(
-      result => result.draw_number === record.guess_period
-    );
-    
-    // 如果找不到匹配的，使用第一个开奖结果
-    const drawResult = matchedDrawResult || record.ext_result[0];
     const prediction = record.guess_result ? formatGuessResult(record.guess_result) : "";
-    const commonIndexes = getCommonDigits(prediction, drawResult.full_number);
     
     return (
       <div>
-        <span 
-          style={{ cursor: 'pointer' }}
-          onClick={() => {
-            navigator.clipboard.writeText(drawResult.full_number);
-            toast.success('已复制到剪贴板');
-          }}
-        >
-          {drawResult.full_number.split('').map((digit, index) => {
-            const isCommon = prediction.includes(digit);
-            return (
-              <span 
-                key={index} 
-                className={isCommon ? 'highlighted-digit' : ''}
-              >
-                {digit}
-              </span>
-            );
-          })}
-        </span>
+        {record.ext_result.map((drawResult, resultIndex) => (
+          <div key={resultIndex} style={{ marginBottom: resultIndex < record.ext_result!.length - 1 ? '8px' : '0' }}>
+            <span style={{ marginRight: '8px', fontSize: '12px', color: '#888' }}>
+              {drawResult.draw_number}:
+            </span>
+            <span 
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                navigator.clipboard.writeText(drawResult.full_number);
+                toast.success('已复制到剪贴板');
+              }}
+            >
+              {drawResult.full_number.split('').map((digit, index) => {
+                // 判断是否应该高亮（数字在预测结果中出现）
+                const isCommon = prediction.includes(digit);
+                // 判断是否应该使用金色高亮（第一位数字与预测结果的第一位数字相同）
+                const isGoldHighlight = index === 0 && isCommon && prediction.length > 0 && prediction[0] === digit;
+                
+                return (
+                  <span 
+                    key={index} 
+                    className={isCommon 
+                      ? (isGoldHighlight ? 'highlighted-digit-gold' : 'highlighted-digit') 
+                      : ''}
+                  >
+                    {digit}
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+        ))}
       </div>
     );
   };
@@ -316,39 +319,16 @@ const Predict = () => {
               toast.success('已复制到剪贴板');
             }}
           >
-            {renderHighlightedPrediction(resultText, record.ext_result, record.guess_period)}
+            {renderHighlightedPrediction(resultText, record.ext_result)}
           </span>
         );
       },
     },
     {
-      title: "开奖结果",
+      title: "正式结果",
       key: "draw_result",
+      width: 300,
       render: (record: PredictItem) => renderDrawResult(record),
-    },
-    {
-      title: "重合数字",
-      key: "common_digits",
-      render: (record: PredictItem) => {
-        const prediction = record.guess_result ? formatGuessResult(record.guess_result) : "";
-        const commonCount = countCommonDigits(prediction, record.ext_result);
-        
-        if (commonCount === 0 && (!record.ext_result || record.ext_result.length === 0)) {
-          return "-";
-        }
-        
-        return (
-          <Badge 
-            count={commonCount} 
-            style={{ 
-              backgroundColor: commonCount >= 3 ? '#52c41a' : (commonCount >= 1 ? '#1890ff' : '#f5222d'),
-              fontSize: '14px',
-              fontWeight: 'bold',
-              padding: '0 8px'
-            }} 
-          />
-        );
-      },
     },
     {
       title: "处理状态",
@@ -356,7 +336,7 @@ const Predict = () => {
       render: (record: PredictItem) => getStatusTag(record.draw_status),
     },
     {
-      title: "中奖状态",
+      title: "状态",
       key: "win_status",
       render: (record: PredictItem) => {
         if (record.draw_status !== 'finished') {
@@ -365,10 +345,10 @@ const Predict = () => {
         
         return record.is_success ? 
           <Tag color="success">
-            <CheckCircleOutlined /> 中奖
+            <CheckCircleOutlined /> 中
           </Tag> : 
           <Tag color="error">
-            <CloseCircleOutlined /> 未中奖
+            <CloseCircleOutlined /> 未中
           </Tag>;
       },
     },
