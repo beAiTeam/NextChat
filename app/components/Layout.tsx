@@ -1,6 +1,6 @@
 import { Layout, Menu } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
-import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, LineChartOutlined } from '@ant-design/icons';
+import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, LineChartOutlined, AppstoreOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 
 const { Sider, Content } = Layout;
@@ -24,6 +24,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       key: '/predict',
       icon: <LineChartOutlined />,
       label: 'AI预测',
+    },
+    {
+      key: '/aitype',
+      icon: <AppstoreOutlined />,
+      label: 'AI类型',
     },
     {
       key: '/prompt',
