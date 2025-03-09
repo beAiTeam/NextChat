@@ -1,0 +1,143 @@
+.predict-container {
+  height: calc(100vh - 112px);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  overflow: hidden;
+
+  .predict-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    flex-shrink: 0;
+
+    .predict-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin: 0;
+    }
+
+    .predict-controls {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+    }
+  }
+
+  .predict-table-container {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    padding: 24px;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    overflow: auto;
+
+    .ant-table-wrapper {
+      height: 100%;
+      
+      .ant-table {
+        height: 100%;
+        
+        .ant-table-container {
+          height: 100%;
+        }
+        
+        .ant-table-body {
+          max-height: calc(100vh - 300px) !important;
+          overflow-y: auto !important;
+        }
+      }
+    }
+
+    .selectable-table {
+      user-select: text;
+      
+      td {
+        user-select: text;
+      }
+
+      .ant-table-cell span[style*="cursor: pointer"]:hover {
+        color: #1890ff;
+      }
+      
+      .ant-tag {
+        margin-right: 0;
+        font-weight: 500;
+      }
+      
+      .ant-table-cell div .ant-tag {
+        display: inline-block;
+        margin-bottom: 4px;
+      }
+      
+      .clickable-text {
+        color: #1890ff;
+        cursor: pointer;
+        
+        &:hover {
+          text-decoration: underline;
+        }
+      }
+      
+      .highlighted-digit {
+        color: #f5222d;
+        font-weight: bold;
+        background-color: rgba(245, 34, 45, 0.1);
+        padding: 0 2px;
+        border-radius: 2px;
+        margin: 0 1px;
+      }
+    }
+  }
+}
+
+.selectable-table {
+  .ant-table-tbody > tr > td {
+    cursor: pointer;
+  }
+}
+
+.ai-type-modal {
+  .ant-modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+  
+  .ai-type-details {
+    .prompt-content {
+      background-color: #f5f5f5;
+      padding: 12px;
+      border-radius: 4px;
+      max-height: 400px;
+      overflow-y: auto;
+      
+      pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        margin: 0;
+        font-family: 'Courier New', Courier, monospace;
+      }
+    }
+  }
+}
+
+.draw-result-modal {
+  .ant-modal-body {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  .draw-result-details {
+    .ant-table-wrapper {
+      margin-top: 12px;
+      
+      .ant-table-tbody > tr > td {
+        padding: 12px 16px;
+      }
+    }
+  }
+} 

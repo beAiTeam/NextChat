@@ -1,6 +1,6 @@
 import { Layout, Menu } from 'antd';
 import { useRouter, usePathname } from 'next/navigation';
-import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined } from '@ant-design/icons';
+import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, LineChartOutlined } from '@ant-design/icons';
 import { useState } from 'react';
 
 const { Sider, Content } = Layout;
@@ -19,6 +19,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       key: '/todo',
       icon: <UnorderedListOutlined />,
       label: 'List',
+    },
+    {
+      key: '/predict',
+      icon: <LineChartOutlined />,
+      label: 'AI预测',
     },
     {
       key: '/prompt',
