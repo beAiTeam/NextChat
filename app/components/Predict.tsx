@@ -236,7 +236,13 @@ const Predict = () => {
     
     return (
       <div>
-        <span>
+        <span 
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            navigator.clipboard.writeText(drawResult.full_number);
+            toast.success('已复制到剪贴板');
+          }}
+        >
           {drawResult.full_number.split('').map((digit, index) => {
             const isCommon = prediction.includes(digit);
             return (
@@ -258,6 +264,17 @@ const Predict = () => {
       title: "期号",
       dataIndex: "guess_period",
       key: "guess_period",
+      render: (text: string) => (
+        <span 
+          style={{ cursor: 'pointer' }}
+          onClick={() => {
+            navigator.clipboard.writeText(text);
+            toast.success('已复制到剪贴板');
+          }}
+        >
+          {text}
+        </span>
+      ),
     },
     {
       title: "预测策略",
