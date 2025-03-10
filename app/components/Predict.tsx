@@ -268,6 +268,53 @@ const Predict = () => {
     );
   };
 
+  // 添加一个新函数来检查当前第一位数字是否匹配
+  const checkFirstDigitMatch = (record: PredictItem) => {
+    // 如果没有预测结果或开奖结果，则无法判断
+    if (!record.guess_result || !record.ext_result || record.ext_result.length === 0) {
+      return false;
+    }
+
+    // 获取预测结果
+    const prediction = formatGuessResult(record.guess_result);
+    if (prediction === "暂无结果" || prediction.length === 0) {
+      return false;
+    }
+    
+    // 获取预测结果的第一个数字
+    const firstDigitOfPrediction = prediction[0];
+    
+    // 获取预测结果的所有数字
+    const predictionDigits = prediction.split('');
+    
+    // 获取预测结果的后4位数字
+    const lastFourDigits = prediction.slice(1);
+
+    // 只检查期号相同的那组开奖结果
+    const matchedDrawResult = record.ext_result.find(drawResult => 
+      drawResult.draw_number === record.guess_period
+    );
+    
+    // 如果找不到匹配的期号，返回false
+    if (!matchedDrawResult) {
+      return false;
+    }
+    
+    // 将开奖结果拆分成单个数字
+    const fullNumberDigits = matchedDrawResult.full_number.split('');
+    
+    // 条件1：检查预测结果的第一个数字是否出现在匹配期号的开奖结果中的任意位置
+    const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
+    
+    // 条件2：检查预测结果后4位中的任意一位是否在该期开奖结果中出现
+    const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
+      fullNumberDigits.includes(digit)
+    );
+    
+    // 同时满足两个条件才返回true
+    return isFirstDigitMatched && isAnyLastFourDigitsMatched;
+  };
+
   const columns = [
     {
       title: "期号",
@@ -327,6 +374,33 @@ const Predict = () => {
       title: "处理状态",
       key: "process_status",
       render: (record: PredictItem) => getStatusTag(record.draw_status),
+    },
+    {
+      title: "当期状态",
+      key: "first_digit_match",
+      render: (record: PredictItem) => {
+        if (!record.guess_result || !record.ext_result || record.ext_result.length === 0) {
+          return "等待开奖结果";
+        }
+        
+        // 检查是否存在匹配的期号
+        const matchedDrawResult = record.ext_result.find(drawResult => 
+          drawResult.draw_number === record.guess_period
+        );
+        
+        // 如果找不到匹配的期号，返回等待开奖结果
+        if (!matchedDrawResult) {
+          return "等待开奖结果";
+        }
+        
+        return checkFirstDigitMatch(record) ? 
+          <Tag color="success">
+            <CheckCircleOutlined /> 中
+          </Tag> : 
+          <Tag color="error">
+            <CloseCircleOutlined /> 未中
+          </Tag>;
+      },
     },
     {
       title: "状态",
