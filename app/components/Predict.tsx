@@ -1,13 +1,13 @@
 "use client";
 
-import { Table, Button, Card, Row, Col, Tag, Modal, Typography, Divider, Tooltip, Badge } from "antd";
+import { CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Modal, Row, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
-import axiosServices from "../utils/my-axios";
-import './Predict.scss';
 import toast from 'react-hot-toast';
-import MainLayout from './Layout';
-import { ReloadOutlined, InfoCircleOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons';
 import { safeLocalStorage } from "../utils";
+import axiosServices from "../utils/my-axios";
+import MainLayout from './Layout';
+import './Predict.scss';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -219,7 +219,7 @@ const Predict = () => {
               key={index} 
               className={shouldHighlight 
                 ? (isGoldHighlight ? 'highlighted-digit-gold' : 'highlighted-digit') 
-                : ''}
+                : 'digit'}
             >
               {digit}
             </span>
@@ -231,8 +231,10 @@ const Predict = () => {
 
   // 渲染开奖结果
   const renderDrawResult = (record: PredictItem) => {
-    if (!record.ext_result || record.ext_result.length === 0) {
-      return "暂无结果";
+   
+    // 当ext_result长度不等于3时，显示等待开奖结果
+    if (!record.ext_result || record.ext_result.length === 0 || record.ext_result.length !== 3) {
+      return "等待开奖结果";
     }
     
     const prediction = record.guess_result ? formatGuessResult(record.guess_result) : "";
@@ -262,7 +264,7 @@ const Predict = () => {
                     key={index} 
                     className={isCommon 
                       ? (isGoldHighlight ? 'highlighted-digit-gold' : 'highlighted-digit') 
-                      : ''}
+                      : 'digit'}
                   >
                     {digit}
                   </span>
