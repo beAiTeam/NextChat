@@ -341,6 +341,35 @@ const Predict = () => {
     return isFirstDigitMatched && isAnyLastFourDigitsMatched;
   };
 
+  // 添加新方法检查三期内是否有匹配
+  const checkThreePeriodsMatch = (record: PredictItem) => {
+    if (!record.guess_result || !record.ext_result || record.ext_result.length === 0) {
+      return { status: 'waiting', message: "等待开奖结果" };
+    }
+
+    const prediction = formatGuessResult(record.guess_result);
+    if (prediction === "暂无结果" || prediction.length === 0) {
+      return { status: 'waiting', message: "等待预测结果" };
+    }
+
+    const firstDigitOfPrediction = prediction[0];
+    const lastFourDigits = prediction.slice(1);
+
+    const hasMatch = record.ext_result.some(drawResult => {
+      const fullNumberDigits = drawResult.full_number.split('');
+      const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
+      const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
+        fullNumberDigits.includes(digit)
+      );
+      return isFirstDigitMatched && isAnyLastFourDigitsMatched;
+    });
+
+    return {
+      status: 'finished',
+      isMatch: hasMatch
+    };
+  };
+
   const handleExportExcel = () => {
     // 准备Excel数据
     const exportData = data.map(item => {
@@ -478,17 +507,13 @@ const Predict = () => {
       title: "状态",
       key: "win_status",
       render: (record: PredictItem) => {
-
-      if(!record.ext_result || record.ext_result.length !== 3){
-        return "等待开奖结果";
-      }
-      
-        if (record.draw_status !== 'finished') {
-          return "-";
+        const matchResult = checkThreePeriodsMatch(record);
+        
+        if (matchResult.status === 'waiting') {
+          return matchResult.message;
         }
 
-        
-        return record.is_success ? 
+        return matchResult.isMatch ? 
           <Tag color="success">
             <CheckCircleOutlined /> 中
           </Tag> : 
