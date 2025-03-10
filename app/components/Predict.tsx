@@ -229,41 +229,66 @@ const Predict = () => {
     }
     
     const prediction = record.guess_result ? formatGuessResult(record.guess_result) : "";
+    if (prediction === "暂无结果" || prediction.length === 0) {
+      return prediction;
+    }
+
+    // 获取预测结果的第一个数字和后4位数字
+    const firstDigitOfPrediction = prediction[0];
+    const lastFourDigits = prediction.slice(1);
     
     return (
       <div>
-        {record.ext_result.map((drawResult, resultIndex) => (
-          <div key={resultIndex} style={{ marginBottom: resultIndex < record.ext_result!.length - 1 ? '8px' : '0' }}>
-            <span style={{ marginRight: '8px', fontSize: '12px', color: '#888' }}>
-              {drawResult.draw_number}:
-            </span>
-            <span 
-              style={{ cursor: 'pointer' }}
-              onClick={() => {
-                navigator.clipboard.writeText(drawResult.full_number);
-                toast.success('已复制到剪贴板');
+        {record.ext_result.map((drawResult, resultIndex) => {
+          // 检查这组开奖结果是否匹配预测结果
+          const fullNumberDigits = drawResult.full_number.split('');
+          const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
+          const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
+            fullNumberDigits.includes(digit)
+          );
+          const isMatched = isFirstDigitMatched && isAnyLastFourDigitsMatched;
+
+          return (
+            <div 
+              key={resultIndex} 
+              style={{ 
+                marginBottom: resultIndex < record.ext_result!.length - 1 ? '8px' : '0',
+                padding: '4px 8px',
+                backgroundColor: isMatched ? '#e6f7ff' : 'transparent',
+                borderRadius: '4px'
               }}
             >
-              {drawResult.full_number.split('').map((digit, index) => {
-                // 判断开奖结果中的数字是否在预测结果中出现
-                const isCommon = prediction.includes(digit);
-                // 如果预测结果的第一位与当前数字匹配，则标红色
-                const isFirstDigitMatch = prediction.length > 0 && digit === prediction[0];
-                
-                return (
-                  <span 
-                    key={index} 
-                    className={isCommon 
-                      ? (isFirstDigitMatch ? 'highlighted-digit-gold' : 'highlighted-digit') 
-                      : 'digit'}
-                  >
-                    {digit}
-                  </span>
-                );
-              })}
-            </span>
-          </div>
-        ))}
+              <span style={{ marginRight: '8px', fontSize: '12px', color: '#888' }}>
+                {drawResult.draw_number}:
+              </span>
+              <span 
+                style={{ cursor: 'pointer' }}
+                onClick={() => {
+                  navigator.clipboard.writeText(drawResult.full_number);
+                  toast.success('已复制到剪贴板');
+                }}
+              >
+                {drawResult.full_number.split('').map((digit, index) => {
+                  // 判断开奖结果中的数字是否在预测结果中出现
+                  const isCommon = prediction.includes(digit);
+                  // 如果预测结果的第一位与当前数字匹配，则标红色
+                  const isFirstDigitMatch = prediction.length > 0 && digit === prediction[0];
+                  
+                  return (
+                    <span 
+                      key={index} 
+                      className={isCommon 
+                        ? (isFirstDigitMatch ? 'highlighted-digit-gold' : 'highlighted-digit') 
+                        : 'digit'}
+                    >
+                      {digit}
+                    </span>
+                  );
+                })}
+              </span>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -370,11 +395,11 @@ const Predict = () => {
       width: 300,
       render: (record: PredictItem) => renderDrawResult(record),
     },
-    {
-      title: "处理状态",
-      key: "process_status",
-      render: (record: PredictItem) => getStatusTag(record.draw_status),
-    },
+    // {
+    //   title: "处理状态",
+    //   key: "process_status",
+    //   render: (record: PredictItem) => getStatusTag(record.draw_status),
+    // },
     {
       title: "当期状态",
       key: "first_digit_match",
@@ -430,11 +455,6 @@ const Predict = () => {
       dataIndex: "guess_time",
       key: "guess_time",
       render: (timestamp: number) => new Date(timestamp * 1000).toLocaleString(),
-    },
-    {
-      title: "策略类型",
-      dataIndex: ["ai_type", "type"],
-      key: "ai_type_type",
     },
   ];
 
