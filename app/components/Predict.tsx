@@ -4,6 +4,7 @@ import { CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, ReloadOut
 import { Button, Card, Col, Modal, Row, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
 import MainLayout from './Layout';
@@ -340,6 +341,52 @@ const Predict = () => {
     return isFirstDigitMatched && isAnyLastFourDigitsMatched;
   };
 
+  const handleExportExcel = () => {
+    // 准备Excel数据
+    const exportData = data.map(item => {
+      // 获取匹配信息
+      let matchInfo = '';
+      if (item.ext_result && item.ext_result.length > 0 && item.guess_result) {
+        const prediction = formatGuessResult(item.guess_result);
+        const firstDigitOfPrediction = prediction[0];
+        const lastFourDigits = prediction.slice(1);
+
+        // 查找匹配的结果
+        const matchedIndex = item.ext_result.findIndex(drawResult => {
+          const fullNumberDigits = drawResult.full_number.split('');
+          const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
+          const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
+            fullNumberDigits.includes(digit)
+          );
+          return isFirstDigitMatched && isAnyLastFourDigitsMatched;
+        });
+
+        if (matchedIndex !== -1) {
+          matchInfo = `，第${item.guess_period}期中了，开在第${matchedIndex + 1}期中`;
+        }
+      }
+
+      return {
+        '期号': item.guess_period,
+        '预测策略': item.ai_type.name,
+        '预测结果': item.guess_result ? formatGuessResult(item.guess_result) : '暂无结果',
+        '正式结果': item.ext_result ? item.ext_result.map(r => r.full_number).join(', ') + matchInfo : '等待开奖结果',
+        '当期状态': checkFirstDigitMatch(item) ? '中' : '未中',
+        '状态': item.is_success ? '中' : '未中',
+        '预测时间': new Date(item.guess_time * 1000).toLocaleString()
+      };
+    });
+
+    // 创建工作簿
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "预测数据");
+
+    // 导出Excel文件
+    XLSX.writeFile(wb, "predict_data.xlsx");
+    toast.success('导出成功！');
+  };
+
   const columns = [
     {
       title: "期号",
@@ -464,6 +511,13 @@ const Predict = () => {
         <div className="predict-header">
           <h1 className="predict-title">AI预测记录</h1>
           <div className="predict-controls">
+            <Button 
+              type="primary" 
+              onClick={handleExportExcel}
+              className="export-button"
+            >
+              导出Excel
+            </Button>
             <Button
               icon={<ReloadOutlined />}
               onClick={handleRefresh}
