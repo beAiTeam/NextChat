@@ -193,7 +193,7 @@ const Predict = () => {
     return (
       <span>
         {prediction.split('').map((digit, index) => {
-          // 判断是否应该高亮（数字在任意一个开奖结果中出现）
+          // 判断预测结果中的数字是否在任意一个开奖结果中出现
           let shouldHighlight = false;
           for (const drawResult of drawResults) {
             if (drawResult.full_number.includes(digit)) {
@@ -202,23 +202,14 @@ const Predict = () => {
             }
           }
           
-          // 判断是否应该使用金色高亮（第一位数字与任何一期开奖结果的第一位数字相同）
-          let isGoldHighlight = false;
-          if (index === 0) {
-            // 检查所有开奖结果
-            for (const drawResult of drawResults) {
-              if (drawResult.full_number[0] === digit) {
-                isGoldHighlight = true;
-                break;
-              }
-            }
-          }
+          // 新逻辑：第一位数字与正式结果中任意一个数字匹配则标红色，其他位匹配则标绿色
+          const isFirstDigit = index === 0;
           
           return (
             <span 
               key={index} 
               className={shouldHighlight 
-                ? (isGoldHighlight ? 'highlighted-digit-gold' : 'highlighted-digit') 
+                ? (isFirstDigit ? 'highlighted-digit-gold' : 'highlighted-digit') 
                 : 'digit'}
             >
               {digit}
@@ -233,7 +224,7 @@ const Predict = () => {
   const renderDrawResult = (record: PredictItem) => {
    
     // 当ext_result长度不等于3时，显示等待开奖结果
-    if (!record.ext_result || record.ext_result.length === 0 || record.ext_result.length !== 3) {
+    if (!record.ext_result || record.ext_result.length === 0 ) {
       return "等待开奖结果";
     }
     
@@ -254,16 +245,16 @@ const Predict = () => {
               }}
             >
               {drawResult.full_number.split('').map((digit, index) => {
-                // 判断是否应该高亮（数字在预测结果中出现）
+                // 判断开奖结果中的数字是否在预测结果中出现
                 const isCommon = prediction.includes(digit);
-                // 判断是否应该使用金色高亮（第一位数字与预测结果的第一位数字相同）
-                const isGoldHighlight = index === 0 && isCommon && prediction.length > 0 && prediction[0] === digit;
+                // 如果预测结果的第一位与当前数字匹配，则标红色
+                const isFirstDigitMatch = prediction.length > 0 && digit === prediction[0];
                 
                 return (
                   <span 
                     key={index} 
                     className={isCommon 
-                      ? (isGoldHighlight ? 'highlighted-digit-gold' : 'highlighted-digit') 
+                      ? (isFirstDigitMatch ? 'highlighted-digit-gold' : 'highlighted-digit') 
                       : 'digit'}
                   >
                     {digit}
@@ -341,9 +332,15 @@ const Predict = () => {
       title: "状态",
       key: "win_status",
       render: (record: PredictItem) => {
+
+      if(!record.ext_result || record.ext_result.length !== 3){
+        return "等待开奖结果";
+      }
+      
         if (record.draw_status !== 'finished') {
           return "-";
         }
+
         
         return record.is_success ? 
           <Tag color="success">
@@ -399,7 +396,7 @@ const Predict = () => {
                 setPageSize(size);
               },
               showSizeChanger: true,
-              pageSizeOptions: ['8','10', '20', '50', '100','500','1000'],
+              pageSizeOptions: ['8','10', '20', '50', '100','200','500','1000'],
               showTotal: (total) => `共 ${total} 条数据`,
             }}
           />
