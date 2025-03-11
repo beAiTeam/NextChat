@@ -1,5 +1,7 @@
 .predict-chart-container {
   padding: 24px;
+  height: 100%;
+  overflow-y: auto;
   
   .ant-card {
     border-radius: 8px;

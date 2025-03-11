@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
-    "@ant-design/plots": "^2.3.3",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@hello-pangea/dnd": "^16.5.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
@@ -33,6 +32,8 @@
     "antd": "^5.24.2",
     "axios": "0.27.2",
     "clsx": "^2.1.1",
+    "echarts": "^5.6.0",
+    "echarts-for-react": "^3.0.3",
     "emoji-picker-react": "^4.9.2",
     "fuse.js": "^7.0.0",
     "heic2any": "^0.0.4",

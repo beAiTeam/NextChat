@@ -28,17 +28,9 @@ export const checkPeriodMatch = (prediction: string, drawResult: DrawResult): bo
   const lastFourDigits = prediction.slice(1);
   const fullNumberDigits = drawResult.full_number.split('');
 
-  // 检查第一个数字在开奖结果中出现的次数
-  const firstDigitCount = fullNumberDigits.filter(digit => digit === firstDigitOfPrediction).length;
-  
-  // 如果第一个数字出现2次或以上，直接返回true
-  if (firstDigitCount >= 2) {
-    return true;
-  }
-
   // 否则继续检查原有条件
   const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-  const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
+  const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit =>
     fullNumberDigits.includes(digit)
   );
 
@@ -51,7 +43,7 @@ export const checkCurrentPeriodMatch = (prediction: string, drawResults: DrawRes
   if (!prediction || prediction === "暂无结果") return false;
 
   // 只检查期号相同的那组开奖结果
-  const matchedDrawResult = drawResults.find(drawResult => 
+  const matchedDrawResult = drawResults.find(drawResult =>
     drawResult.draw_number === guessPeriod
   );
 
@@ -66,4 +58,14 @@ export const checkThreePeriodsMatch = (prediction: string, drawResults: DrawResu
   if (!prediction || prediction === "暂无结果") return false;
 
   return drawResults.some(drawResult => checkPeriodMatch(prediction, drawResult));
-}; 
+};
+
+// 检查两期内是否中奖
+export const checkTwoPeriodsMatch = (prediction: string, drawResults: DrawResult[] | null): boolean => {
+  if (!drawResults || drawResults.length === 0) return false;
+  if (!prediction || prediction === "暂无结果") return false;
+
+  // 只取前两期的开奖结果进行判断
+  const twoPeriodsResults = drawResults.slice(0, 2);
+  return twoPeriodsResults.some(drawResult => checkPeriodMatch(prediction, drawResult));
+};
