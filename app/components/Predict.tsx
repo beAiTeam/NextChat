@@ -1,15 +1,27 @@
 "use client";
 
-import { CheckCircleOutlined, CloseCircleOutlined, InfoCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import {
+  CheckCircleOutlined,
+  CloseCircleOutlined,
+  InfoCircleOutlined,
+  ReloadOutlined,
+} from "@ant-design/icons";
 import { Button, Card, Col, Modal, Row, Table, Tag, Typography } from "antd";
 import { useEffect, useState } from "react";
-import toast from 'react-hot-toast';
-import * as XLSX from 'xlsx';
+import toast from "react-hot-toast";
+import * as XLSX from "xlsx";
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
-import { checkCurrentPeriodMatch, checkPeriodMatch, checkThreePeriodsMatch, DrawResult, formatGuessResult, GuessResult } from "../utils/predict-utils";
-import MainLayout from './Layout';
-import './Predict.scss';
+import {
+  checkCurrentPeriodMatch,
+  checkPeriodMatch,
+  checkThreePeriodsMatch,
+  DrawResult,
+  formatGuessResult,
+  GuessResult,
+} from "../utils/predict-utils";
+import MainLayout from "./Layout";
+import "./Predict.scss";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -32,10 +44,10 @@ interface PredictItem {
   guess_period: string;
   guess_time: number;
   guess_result: GuessResult | null;
-  guess_type: 'ai_5_normal';
+  guess_type: "ai_5_normal";
   ext_result: DrawResult[] | null;
   ai_type: AiTypeConfig;
-  draw_status: 'created' | 'drawed' | 'executing' | 'finished' | 'failed';
+  draw_status: "created" | "drawed" | "executing" | "finished" | "failed";
   retry_count: number;
   is_success: boolean;
 }
@@ -45,7 +57,7 @@ const Predict = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
     // 尝试从localStorage读取保存的pageSize
-    const savedPageSize = localStorage.getItem('predict_page_size');
+    const savedPageSize = localStorage.getItem("predict_page_size");
     return savedPageSize ? parseInt(savedPageSize) : 100;
   });
   const [loading, setLoading] = useState(false);
@@ -53,8 +65,11 @@ const Predict = () => {
   const [total, setTotal] = useState(0);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentAiType, setCurrentAiType] = useState<AiTypeConfig | null>(null);
-  const [isDrawResultModalVisible, setIsDrawResultModalVisible] = useState(false);
-  const [currentDrawResults, setCurrentDrawResults] = useState<DrawResult[] | null>(null);
+  const [isDrawResultModalVisible, setIsDrawResultModalVisible] =
+    useState(false);
+  const [currentDrawResults, setCurrentDrawResults] = useState<
+    DrawResult[] | null
+  >(null);
 
   const fetchData = async (page: number, size: number) => {
     setLoading(true);
@@ -62,16 +77,19 @@ const Predict = () => {
       const params: any = {
         page,
         page_size: size,
-        guess_type:'ai_5_normal',
+        guess_type: "ai_5_normal",
       };
 
-      const response = await axiosServices.get('/client/lot/get_ai_guess_list', {
-        params
-      });
+      const response = await axiosServices.get(
+        "/client/lot/get_ai_guess_list",
+        {
+          params,
+        },
+      );
       setData(response.data.data.data);
       setTotal(response.data.data.total);
     } catch (error) {
-      console.error('获取数据失败:', error);
+      console.error("获取数据失败:", error);
     } finally {
       setLoading(false);
     }
@@ -83,7 +101,7 @@ const Predict = () => {
 
   // 当pageSize变化时保存到localStorage
   useEffect(() => {
-    localStorage.setItem('predict_page_size', pageSize.toString());
+    localStorage.setItem("predict_page_size", pageSize.toString());
   }, [pageSize]);
 
   // 添加刷新函数
@@ -103,7 +121,7 @@ const Predict = () => {
 
   const showDrawResultModal = (drawResults: DrawResult[] | null) => {
     if (!drawResults || drawResults.length === 0) {
-      toast.error('暂无开奖结果');
+      toast.error("暂无开奖结果");
       return;
     }
     setCurrentDrawResults(drawResults);
@@ -115,30 +133,34 @@ const Predict = () => {
   };
 
   const getStatusTag = (status: string) => {
-    switch(status) {
-      case 'created':
+    switch (status) {
+      case "created":
         return <Tag color="blue">待预测</Tag>;
-      case 'drawed':
+      case "drawed":
         return <Tag color="cyan">已开</Tag>;
-      case 'executing':
+      case "executing":
         return <Tag color="processing">执行中</Tag>;
-      case 'finished':
+      case "finished":
         return <Tag color="green">已完成</Tag>;
-      case 'failed':
+      case "failed":
         return <Tag color="red">失败</Tag>;
       default:
         return <Tag color="default">未知</Tag>;
     }
   };
 
-  const renderHighlightedPrediction = (prediction: string, drawResults: DrawResult[] | null, guessPeriod?: string) => {
+  const renderHighlightedPrediction = (
+    prediction: string,
+    drawResults: DrawResult[] | null,
+    guessPeriod?: string,
+  ) => {
     if (!drawResults || drawResults.length === 0 || prediction === "暂无结果") {
       return prediction;
     }
-    
+
     return (
       <span>
-        {prediction.split('').map((digit, index) => {
+        {prediction.split("").map((digit, index) => {
           // 判断预测结果中的数字是否在任意一个开奖结果中出现
           let shouldHighlight = false;
           for (const drawResult of drawResults) {
@@ -147,16 +169,20 @@ const Predict = () => {
               break;
             }
           }
-          
+
           // 新逻辑：第一位数字与正式结果中任意一个数字匹配则标红色，其他位匹配则标绿色
           const isFirstDigit = index === 0;
-          
+
           return (
-            <span 
-              key={index} 
-              className={shouldHighlight 
-                ? (isFirstDigit ? 'highlighted-digit-gold' : 'highlighted-digit') 
-                : 'digit'}
+            <span
+              key={index}
+              className={
+                shouldHighlight
+                  ? isFirstDigit
+                    ? "highlighted-digit-gold"
+                    : "highlighted-digit"
+                  : "digit"
+              }
             >
               {digit}
             </span>
@@ -167,17 +193,18 @@ const Predict = () => {
   };
 
   const renderDrawResult = (record: PredictItem) => {
-   
     // 当ext_result长度不等于3时，显示等待开奖结果
-    if (!record.ext_result || record.ext_result.length === 0 ) {
+    if (!record.ext_result || record.ext_result.length === 0) {
       return "等待开奖结果";
     }
-    
-    const prediction = record.guess_result ? formatGuessResult(record.guess_result) : "";
+
+    const prediction = record.guess_result
+      ? formatGuessResult(record.guess_result)
+      : "";
     if (prediction === "暂无结果" || prediction.length === 0) {
       return prediction;
     }
-    
+
     return (
       <div>
         {record.ext_result.map((drawResult, resultIndex) => {
@@ -185,37 +212,45 @@ const Predict = () => {
           const isMatched = checkPeriodMatch(prediction, drawResult);
 
           return (
-            <div 
-              key={resultIndex} 
-              style={{ 
-                marginBottom: resultIndex < record.ext_result!.length - 1 ? '8px' : '0',
-                padding: '4px 8px',
-                backgroundColor: isMatched ? '#e6f7ff' : 'transparent',
-                borderRadius: '4px'
+            <div
+              key={resultIndex}
+              style={{
+                marginBottom:
+                  resultIndex < record.ext_result!.length - 1 ? "8px" : "0",
+                padding: "4px 8px",
+                backgroundColor: isMatched ? "#e6f7ff" : "transparent",
+                borderRadius: "4px",
               }}
             >
-              <span style={{ marginRight: '8px', fontSize: '12px', color: '#888' }}>
+              <span
+                style={{ marginRight: "8px", fontSize: "12px", color: "#888" }}
+              >
                 {drawResult.draw_number}:
               </span>
-              <span 
-                style={{ cursor: 'pointer' }}
+              <span
+                style={{ cursor: "pointer" }}
                 onClick={() => {
                   navigator.clipboard.writeText(drawResult.full_number);
-                  toast.success('已复制到剪贴板');
+                  toast.success("已复制到剪贴板");
                 }}
               >
-                {drawResult.full_number.split('').map((digit, index) => {
+                {drawResult.full_number.split("").map((digit, index) => {
                   // 判断开奖结果中的数字是否在预测结果中出现
                   const isCommon = prediction.includes(digit);
                   // 如果预测结果的第一位与当前数字匹配，则标红色
-                  const isFirstDigitMatch = prediction.length > 0 && digit === prediction[0];
-                  
+                  const isFirstDigitMatch =
+                    prediction.length > 0 && digit === prediction[0];
+
                   return (
-                    <span 
-                      key={index} 
-                      className={isCommon 
-                        ? (isFirstDigitMatch ? 'highlighted-digit-gold' : 'highlighted-digit') 
-                        : 'digit'}
+                    <span
+                      key={index}
+                      className={
+                        isCommon
+                          ? isFirstDigitMatch
+                            ? "highlighted-digit-gold"
+                            : "highlighted-digit"
+                          : "digit"
+                      }
                     >
                       {digit}
                     </span>
@@ -231,32 +266,51 @@ const Predict = () => {
 
   const handleExportExcel = () => {
     // 准备Excel数据
-    const exportData = data.map(item => {
+    const exportData = data.map((item) => {
       // 获取匹配信息
-      let matchInfo = '';
+      let matchInfo = "";
       if (item.ext_result && item.ext_result.length > 0 && item.guess_result) {
         const prediction = formatGuessResult(item.guess_result);
-        const isCurrentPeriodMatch = checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period);
-        const matchedIndex = item.ext_result.findIndex(drawResult => {
+        const isCurrentPeriodMatch = checkCurrentPeriodMatch(
+          prediction,
+          item.ext_result,
+          item.guess_period,
+        );
+        const matchedIndex = item.ext_result.findIndex((drawResult) => {
           return checkPeriodMatch(prediction, drawResult);
         });
 
         if (matchedIndex !== -1) {
-          matchInfo = `，第${item.guess_period}期中了，开在第${matchedIndex + 1}期中`;
+          matchInfo = `，第${item.guess_period}期中了，开在第${
+            matchedIndex + 1
+          }期中`;
         }
       }
 
-      const prediction = item.guess_result ? formatGuessResult(item.guess_result) : '暂无结果';
-      const threePeriodsMatchResult = checkThreePeriodsMatch(prediction, item.ext_result);
+      const prediction = item.guess_result
+        ? formatGuessResult(item.guess_result)
+        : "暂无结果";
+      const threePeriodsMatchResult = checkThreePeriodsMatch(
+        prediction,
+        item.ext_result,
+      );
 
       return {
-        '期号': item.guess_period,
-        '预测策略': item.ai_type.name,
-        '预测结果': prediction,
-        '正式结果': item.ext_result ? item.ext_result.map(r => r.full_number).join(', ') + matchInfo : '等待开奖结果',
-        '当期状态': checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period) ? '中' : '未中',
-        '状态': threePeriodsMatchResult ? '中' : '未中',
-        '预测时间': new Date(item.guess_time * 1000).toLocaleString()
+        期号: item.guess_period,
+        预测策略: item.ai_type.name,
+        预测结果: prediction,
+        正式结果: item.ext_result
+          ? item.ext_result.map((r) => r.full_number).join(", ") + matchInfo
+          : "等待开奖结果",
+        当期状态: checkCurrentPeriodMatch(
+          prediction,
+          item.ext_result,
+          item.guess_period,
+        )
+          ? "中"
+          : "未中",
+        状态: threePeriodsMatchResult ? "中" : "未中",
+        预测时间: new Date(item.guess_time * 1000).toLocaleString(),
       };
     });
 
@@ -267,7 +321,7 @@ const Predict = () => {
 
     // 导出Excel文件
     XLSX.writeFile(wb, "predict_data.xlsx");
-    toast.success('导出成功！');
+    toast.success("导出成功！");
   };
 
   const columns = [
@@ -276,11 +330,11 @@ const Predict = () => {
       dataIndex: "guess_period",
       key: "guess_period",
       render: (text: string) => (
-        <span 
-          style={{ cursor: 'pointer' }}
+        <span
+          style={{ cursor: "pointer" }}
           onClick={() => {
             navigator.clipboard.writeText(text);
-            toast.success('已复制到剪贴板');
+            toast.success("已复制到剪贴板");
           }}
         >
           {text}
@@ -291,7 +345,7 @@ const Predict = () => {
       title: "预测策略",
       key: "ai_type_name",
       render: (record: PredictItem) => (
-        <span 
+        <span
           className="clickable-text"
           onClick={() => showAiTypeModal(record.ai_type)}
         >
@@ -305,13 +359,13 @@ const Predict = () => {
       render: (record: PredictItem) => {
         const resultText = formatGuessResult(record.guess_result);
         if (resultText === "暂无结果") return resultText;
-        
+
         return (
-          <span 
-            style={{ cursor: 'pointer' }}
+          <span
+            style={{ cursor: "pointer" }}
             onClick={() => {
               navigator.clipboard.writeText(resultText);
-              toast.success('已复制到剪贴板');
+              toast.success("已复制到剪贴板");
             }}
           >
             {renderHighlightedPrediction(resultText, record.ext_result)}
@@ -334,58 +388,74 @@ const Predict = () => {
       title: "当期状态",
       key: "first_digit_match",
       render: (record: PredictItem) => {
-        if (!record.guess_result || !record.ext_result || record.ext_result.length === 0) {
+        if (
+          !record.guess_result ||
+          !record.ext_result ||
+          record.ext_result.length === 0
+        ) {
           return "等待开奖结果";
         }
-        
+
         // 检查是否存在匹配的期号
-        const matchedDrawResult = record.ext_result.find(drawResult => 
-          drawResult.draw_number === record.guess_period
+        const matchedDrawResult = record.ext_result.find(
+          (drawResult) => drawResult.draw_number === record.guess_period,
         );
-        
+
         // 如果找不到匹配的期号，返回等待开奖结果
         if (!matchedDrawResult) {
           return "等待开奖结果";
         }
-        
-        return checkCurrentPeriodMatch(formatGuessResult(record.guess_result), record.ext_result, record.guess_period) ? 
+
+        return checkCurrentPeriodMatch(
+          formatGuessResult(record.guess_result),
+          record.ext_result,
+          record.guess_period,
+        ) ? (
           <Tag color="success">
             <CheckCircleOutlined /> 中
-          </Tag> : 
+          </Tag>
+        ) : (
           <Tag color="error">
             <CloseCircleOutlined /> 未中
-          </Tag>;
+          </Tag>
+        );
       },
     },
     {
       title: "状态",
       key: "win_status",
       render: (record: PredictItem) => {
-        if(record.ext_result && record.ext_result.length !== 3){
+        if (!record.ext_result || record.ext_result.length !== 3) {
           return "等待开奖结果";
         }
 
         const prediction = formatGuessResult(record.guess_result);
-        const threePeriodsMatchResult = checkThreePeriodsMatch(prediction, record.ext_result);
-        
+        const threePeriodsMatchResult = checkThreePeriodsMatch(
+          prediction,
+          record.ext_result,
+        );
+
         if (threePeriodsMatchResult === null) {
           return "等待开奖结果";
         }
 
-        return threePeriodsMatchResult ? 
+        return threePeriodsMatchResult ? (
           <Tag color="success">
             <CheckCircleOutlined /> 中
-          </Tag> : 
+          </Tag>
+        ) : (
           <Tag color="error">
             <CloseCircleOutlined /> 未中
-          </Tag>;
+          </Tag>
+        );
       },
     },
     {
       title: "预测时间",
       dataIndex: "guess_time",
       key: "guess_time",
-      render: (timestamp: number) => new Date(timestamp * 1000).toLocaleString(),
+      render: (timestamp: number) =>
+        new Date(timestamp * 1000).toLocaleString(),
     },
   ];
 
@@ -395,17 +465,14 @@ const Predict = () => {
         <div className="predict-header">
           <h1 className="predict-title">AI预测记录 [ai_5_normal]</h1>
           <div className="predict-controls">
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               onClick={handleExportExcel}
               className="export-button"
             >
               导出Excel
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleRefresh}
-            >
+            <Button icon={<ReloadOutlined />} onClick={handleRefresh}>
               刷新
             </Button>
           </div>
@@ -417,7 +484,7 @@ const Predict = () => {
             columns={columns}
             dataSource={data}
             rowKey="_id"
-            scroll={{ y: 'calc(100vh - 250px)' }}
+            scroll={{ y: "calc(100vh - 250px)" }}
             className="selectable-table"
             pagination={{
               current: currentPage,
@@ -428,7 +495,16 @@ const Predict = () => {
                 setPageSize(size);
               },
               showSizeChanger: true,
-              pageSizeOptions: ['8','10', '20', '50', '100','200','500','1000'],
+              pageSizeOptions: [
+                "8",
+                "10",
+                "20",
+                "50",
+                "100",
+                "200",
+                "500",
+                "1000",
+              ],
               showTotal: (total) => `共 ${total} 条数据`,
             }}
           />
@@ -438,7 +514,9 @@ const Predict = () => {
         <Modal
           title={
             <div>
-              <InfoCircleOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+              <InfoCircleOutlined
+                style={{ marginRight: "8px", color: "#1890ff" }}
+              />
               预测策略详情
             </div>
           }
@@ -447,7 +525,7 @@ const Predict = () => {
           footer={[
             <Button key="close" onClick={handleModalClose}>
               关闭
-            </Button>
+            </Button>,
           ]}
           width={800}
           className="ai-type-modal"
@@ -457,9 +535,15 @@ const Predict = () => {
               <Row gutter={[16, 16]}>
                 <Col span={24}>
                   <Card title="基本信息" bordered={false}>
-                    <p><strong>策略名称:</strong> {currentAiType.name}</p>
-                    <p><strong>策略类型:</strong> {currentAiType.type}</p>
-                    <p><strong>使用模型:</strong> {currentAiType.config.model}</p>
+                    <p>
+                      <strong>策略名称:</strong> {currentAiType.name}
+                    </p>
+                    <p>
+                      <strong>策略类型:</strong> {currentAiType.type}
+                    </p>
+                    <p>
+                      <strong>使用模型:</strong> {currentAiType.config.model}
+                    </p>
                   </Card>
                 </Col>
                 <Col span={24}>
@@ -478,7 +562,9 @@ const Predict = () => {
         <Modal
           title={
             <div>
-              <InfoCircleOutlined style={{ marginRight: '8px', color: '#1890ff' }} />
+              <InfoCircleOutlined
+                style={{ marginRight: "8px", color: "#1890ff" }}
+              />
               开奖结果详情
             </div>
           }
@@ -487,7 +573,7 @@ const Predict = () => {
           footer={[
             <Button key="close" onClick={handleDrawResultModalClose}>
               关闭
-            </Button>
+            </Button>,
           ]}
           width={600}
           className="draw-result-modal"
@@ -513,8 +599,9 @@ const Predict = () => {
                     title: "开奖时间",
                     dataIndex: "draw_time",
                     key: "draw_time",
-                    render: (timestamp: number) => new Date(timestamp * 1000).toLocaleString(),
-                  }
+                    render: (timestamp: number) =>
+                      new Date(timestamp * 1000).toLocaleString(),
+                  },
                 ]}
               />
             </div>
@@ -525,4 +612,4 @@ const Predict = () => {
   );
 };
 
-export default Predict; 
+export default Predict;
