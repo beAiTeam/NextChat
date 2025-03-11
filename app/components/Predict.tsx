@@ -7,6 +7,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
+import { checkCurrentPeriodMatch, checkPeriodMatch, checkThreePeriodsMatch, DrawResult, formatGuessResult, GuessResult } from "../utils/predict-utils";
 import MainLayout from './Layout';
 import './Predict.scss';
 
@@ -22,20 +23,6 @@ interface AiTypeConfig {
     prompt: string;
     model: string;
   };
-}
-
-interface GuessResult {
-  top_1_number: number;
-  top_2_number: number;
-  top_3_number: number;
-  top_4_number: number;
-  top_5_number: number;
-}
-
-interface DrawResult {
-  draw_time: number;
-  full_number: string;
-  draw_number: string;
 }
 
 interface PredictItem {
@@ -144,49 +131,6 @@ const Predict = () => {
     }
   };
 
-  const formatGuessResult = (result: GuessResult | null): string => {
-    if (!result) return "暂无结果";
-    return `${result.top_1_number}${result.top_2_number}${result.top_3_number}${result.top_4_number}${result.top_5_number}`;
-  };
-
-  // 获取预测结果和开奖结果的共同数字
-  const getCommonDigits = (prediction: string, drawNumber: string): number[] => {
-    const commonIndexes: number[] = [];
-    
-    for (let i = 0; i < prediction.length; i++) {
-      if (drawNumber.includes(prediction[i])) {
-        commonIndexes.push(i);
-      }
-    }
-    
-    return commonIndexes;
-  };
-
-  // 计算预测结果和开奖结果的重合数字数量
-  const countCommonDigits = (prediction: string, drawResults: DrawResult[] | null): number => {
-    if (!drawResults || drawResults.length === 0 || !prediction || prediction === "暂无结果") return 0;
-    
-    let maxCommonCount = 0;
-    
-    for (const drawResult of drawResults) {
-      const fullNumber = drawResult.full_number;
-      let commonCount = 0;
-      
-      for (let i = 0; i < prediction.length; i++) {
-        if (fullNumber.includes(prediction[i])) {
-          commonCount++;
-        }
-      }
-      
-      if (commonCount > maxCommonCount) {
-        maxCommonCount = commonCount;
-      }
-    }
-    
-    return maxCommonCount;
-  };
-
-  // 渲染带有高亮的预测结果
   const renderHighlightedPrediction = (prediction: string, drawResults: DrawResult[] | null, guessPeriod?: string) => {
     if (!drawResults || drawResults.length === 0 || prediction === "暂无结果") {
       return prediction;
@@ -222,7 +166,6 @@ const Predict = () => {
     );
   };
 
-  // 渲染开奖结果
   const renderDrawResult = (record: PredictItem) => {
    
     // 当ext_result长度不等于3时，显示等待开奖结果
@@ -234,21 +177,12 @@ const Predict = () => {
     if (prediction === "暂无结果" || prediction.length === 0) {
       return prediction;
     }
-
-    // 获取预测结果的第一个数字和后4位数字
-    const firstDigitOfPrediction = prediction[0];
-    const lastFourDigits = prediction.slice(1);
     
     return (
       <div>
         {record.ext_result.map((drawResult, resultIndex) => {
-          // 检查这组开奖结果是否匹配预测结果
-          const fullNumberDigits = drawResult.full_number.split('');
-          const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-          const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
-            fullNumberDigits.includes(digit)
-          );
-          const isMatched = isFirstDigitMatched && isAnyLastFourDigitsMatched;
+          // 使用checkPeriodMatch检查这组开奖结果是否匹配预测结果
+          const isMatched = checkPeriodMatch(prediction, drawResult);
 
           return (
             <div 
@@ -295,82 +229,6 @@ const Predict = () => {
     );
   };
 
-  // 添加一个新函数来检查当前第一位数字是否匹配
-  const checkFirstDigitMatch = (record: PredictItem) => {
-    // 如果没有预测结果或开奖结果，则无法判断
-    if (!record.guess_result || !record.ext_result || record.ext_result.length === 0) {
-      return false;
-    }
-
-    // 获取预测结果
-    const prediction = formatGuessResult(record.guess_result);
-    if (prediction === "暂无结果" || prediction.length === 0) {
-      return false;
-    }
-    
-    // 获取预测结果的第一个数字
-    const firstDigitOfPrediction = prediction[0];
-    
-    // 获取预测结果的所有数字
-    const predictionDigits = prediction.split('');
-    
-    // 获取预测结果的后4位数字
-    const lastFourDigits = prediction.slice(1);
-
-    // 只检查期号相同的那组开奖结果
-    const matchedDrawResult = record.ext_result.find(drawResult => 
-      drawResult.draw_number === record.guess_period
-    );
-    
-    // 如果找不到匹配的期号，返回false
-    if (!matchedDrawResult) {
-      return false;
-    }
-    
-    // 将开奖结果拆分成单个数字
-    const fullNumberDigits = matchedDrawResult.full_number.split('');
-    
-    // 条件1：检查预测结果的第一个数字是否出现在匹配期号的开奖结果中的任意位置
-    const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-    
-    // 条件2：检查预测结果后4位中的任意一位是否在该期开奖结果中出现
-    const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
-      fullNumberDigits.includes(digit)
-    );
-    
-    // 同时满足两个条件才返回true
-    return isFirstDigitMatched && isAnyLastFourDigitsMatched;
-  };
-
-  // 添加新方法检查三期内是否有匹配
-  const checkThreePeriodsMatch = (record: PredictItem) => {
-    if (!record.guess_result || !record.ext_result || record.ext_result.length === 0) {
-      return { status: 'waiting', message: "等待开奖结果" };
-    }
-
-    const prediction = formatGuessResult(record.guess_result);
-    if (prediction === "暂无结果" || prediction.length === 0) {
-      return { status: 'waiting', message: "等待预测结果" };
-    }
-
-    const firstDigitOfPrediction = prediction[0];
-    const lastFourDigits = prediction.slice(1);
-
-    const hasMatch = record.ext_result.some(drawResult => {
-      const fullNumberDigits = drawResult.full_number.split('');
-      const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-      const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
-        fullNumberDigits.includes(digit)
-      );
-      return isFirstDigitMatched && isAnyLastFourDigitsMatched;
-    });
-
-    return {
-      status: 'finished',
-      isMatch: hasMatch
-    };
-  };
-
   const handleExportExcel = () => {
     // 准备Excel数据
     const exportData = data.map(item => {
@@ -378,17 +236,9 @@ const Predict = () => {
       let matchInfo = '';
       if (item.ext_result && item.ext_result.length > 0 && item.guess_result) {
         const prediction = formatGuessResult(item.guess_result);
-        const firstDigitOfPrediction = prediction[0];
-        const lastFourDigits = prediction.slice(1);
-
-        // 查找匹配的结果
+        const isCurrentPeriodMatch = checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period);
         const matchedIndex = item.ext_result.findIndex(drawResult => {
-          const fullNumberDigits = drawResult.full_number.split('');
-          const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-          const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
-            fullNumberDigits.includes(digit)
-          );
-          return isFirstDigitMatched && isAnyLastFourDigitsMatched;
+          return checkPeriodMatch(prediction, drawResult);
         });
 
         if (matchedIndex !== -1) {
@@ -396,13 +246,16 @@ const Predict = () => {
         }
       }
 
+      const prediction = item.guess_result ? formatGuessResult(item.guess_result) : '暂无结果';
+      const threePeriodsMatchResult = checkThreePeriodsMatch(prediction, item.ext_result);
+
       return {
         '期号': item.guess_period,
         '预测策略': item.ai_type.name,
-        '预测结果': item.guess_result ? formatGuessResult(item.guess_result) : '暂无结果',
+        '预测结果': prediction,
         '正式结果': item.ext_result ? item.ext_result.map(r => r.full_number).join(', ') + matchInfo : '等待开奖结果',
-        '当期状态': checkFirstDigitMatch(item) ? '中' : '未中',
-        '状态': item.is_success ? '中' : '未中',
+        '当期状态': checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period) ? '中' : '未中',
+        '状态': threePeriodsMatchResult ? '中' : '未中',
         '预测时间': new Date(item.guess_time * 1000).toLocaleString()
       };
     });
@@ -495,7 +348,7 @@ const Predict = () => {
           return "等待开奖结果";
         }
         
-        return checkFirstDigitMatch(record) ? 
+        return checkCurrentPeriodMatch(formatGuessResult(record.guess_result), record.ext_result, record.guess_period) ? 
           <Tag color="success">
             <CheckCircleOutlined /> 中
           </Tag> : 
@@ -508,18 +361,18 @@ const Predict = () => {
       title: "状态",
       key: "win_status",
       render: (record: PredictItem) => {
-
         if(record.ext_result && record.ext_result.length !== 3){
           return "等待开奖结果";
         }
 
-        const matchResult = checkThreePeriodsMatch(record);
+        const prediction = formatGuessResult(record.guess_result);
+        const threePeriodsMatchResult = checkThreePeriodsMatch(prediction, record.ext_result);
         
-        if (matchResult.status === 'waiting') {
-          return matchResult.message;
+        if (threePeriodsMatchResult === null) {
+          return "等待开奖结果";
         }
 
-        return matchResult.isMatch ? 
+        return threePeriodsMatchResult ? 
           <Tag color="success">
             <CheckCircleOutlined /> 中
           </Tag> : 

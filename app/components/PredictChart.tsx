@@ -4,22 +4,9 @@ import { Line } from '@ant-design/plots';
 import { Card, Radio, Select, Space, Spin } from 'antd';
 import { useEffect, useState } from 'react';
 import axiosServices from '../utils/my-axios';
+import { checkCurrentPeriodMatch, checkThreePeriodsMatch, DrawResult, formatGuessResult, GuessResult } from "../utils/predict-utils";
 import MainLayout from './Layout';
 import './PredictChart.scss';
-
-interface GuessResult {
-  top_1_number: number;
-  top_2_number: number;
-  top_3_number: number;
-  top_4_number: number;
-  top_5_number: number;
-}
-
-interface DrawResult {
-  draw_time: number;
-  full_number: string;
-  draw_number: string;
-}
 
 interface PredictItem {
   _id: string;
@@ -49,29 +36,7 @@ const PredictChart = () => {
     }
 
     const prediction = formatGuessResult(record.guess_result);
-    if (prediction === "暂无结果" || prediction.length === 0) {
-      return false;
-    }
-
-    const firstDigitOfPrediction = prediction[0];
-    const lastFourDigits = prediction.slice(1);
-
-    // 只检查期号相同的那组开奖结果
-    const matchedDrawResult = record.ext_result.find(drawResult => 
-      drawResult.draw_number === record.guess_period
-    );
-
-    if (!matchedDrawResult) {
-      return false;
-    }
-
-    const fullNumberDigits = matchedDrawResult.full_number.split('');
-    const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-    const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
-      fullNumberDigits.includes(digit)
-    );
-
-    return isFirstDigitMatched && isAnyLastFourDigitsMatched;
+    return checkCurrentPeriodMatch(prediction, record.ext_result, record.guess_period);
   };
 
   // 检查三期内是否中奖
@@ -81,26 +46,7 @@ const PredictChart = () => {
     }
 
     const prediction = formatGuessResult(record.guess_result);
-    if (prediction === "暂无结果" || prediction.length === 0) {
-      return false;
-    }
-
-    const firstDigitOfPrediction = prediction[0];
-    const lastFourDigits = prediction.slice(1);
-
-    return record.ext_result.some(drawResult => {
-      const fullNumberDigits = drawResult.full_number.split('');
-      const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-      const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit => 
-        fullNumberDigits.includes(digit)
-      );
-      return isFirstDigitMatched && isAnyLastFourDigitsMatched;
-    });
-  };
-
-  const formatGuessResult = (result: GuessResult | null): string => {
-    if (!result) return "暂无结果";
-    return `${result.top_1_number}${result.top_2_number}${result.top_3_number}${result.top_4_number}${result.top_5_number}`;
+    return checkThreePeriodsMatch(prediction, record.ext_result);
   };
 
   // 计算胜率
@@ -126,9 +72,19 @@ const PredictChart = () => {
       const currentItems = sortedItems.slice(0, index + 1);
       const winRate = calculateWinRate(currentItems);
       
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      let timeStr;
+      
+      if (date.toDateString() === today.toDateString()) {
+        timeStr = date.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      } else {
+        timeStr = date.toLocaleString('zh-CN');
+      }
+      
       return {
-        time: new Date(item.guess_time * 1000).toLocaleString(),
-        winRate: winRate.toFixed(2),
+        time: timeStr,
+        winRate: Number(winRate.toFixed(2))
       };
     });
 
@@ -168,7 +124,7 @@ const PredictChart = () => {
     yField: 'winRate',
     smooth: true,
     xAxis: {
-      type: 'time',
+      type: 'category',
       title: {
         text: '预测时间',
       },
@@ -181,8 +137,12 @@ const PredictChart = () => {
       max: 100,
     },
     tooltip: {
+      showTitle: false,
       formatter: (datum: any) => {
-        return { name: '胜率', value: datum.winRate + '%' };
+        return [
+          { name: '时间', value: datum.time },
+          { name: '胜率', value: datum.winRate + '%' }
+        ];
       },
     },
     point: {
@@ -207,6 +167,8 @@ const PredictChart = () => {
                 value={pageSize}
                 onChange={setPageSize}
                 options={[
+                  { value: 10, label: '10条' },
+                  { value: 50, label: '50条' },
                   { value: 100, label: '100条' },
                   { value: 200, label: '200条' },
                   { value: 500, label: '500条' },
