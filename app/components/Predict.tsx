@@ -22,6 +22,7 @@ import {
 } from "../utils/predict-utils";
 import MainLayout from "./Layout";
 import "./Predict.scss";
+import PredictStats from "./PredictStats";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -295,6 +296,11 @@ const Predict = () => {
         item.ext_result,
       );
 
+      // 找出在哪一期中的
+      const matchedIndex = item.ext_result && item.ext_result.length > 0
+        ? item.ext_result.findIndex((drawResult) => checkPeriodMatch(prediction, drawResult))
+        : -1;
+
       return {
         期号: item.guess_period,
         预测策略: item.ai_type.name,
@@ -309,7 +315,9 @@ const Predict = () => {
         )
           ? "中"
           : "未中",
-        状态: threePeriodsMatchResult ? "中" : "未中",
+        状态: threePeriodsMatchResult 
+          ? `中${matchedIndex !== -1 ? (matchedIndex + 1) : ''}`
+          : "未中",
         预测时间: new Date(item.guess_time * 1000).toLocaleString(),
       };
     });
@@ -470,6 +478,15 @@ const Predict = () => {
         <div className="predict-header">
           <h1 className="predict-title">AI预测记录 [ai_5_normal]</h1>
           <div className="predict-controls">
+         <div style={{marginRight: '10px',height: '30px'}}>
+         <PredictStats 
+          
+  defaultPageSize={100}
+  defaultWinType="current"
+  onDataChange={(data) => console.log('数据更新:', data)}
+  onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
+/>
+         </div>
             <Button
               type="primary"
               onClick={handleExportExcel}
