@@ -36,6 +36,7 @@ const PredictChart = () => {
   const [winType, setWinType] = useState<"current" | "two" | "any">("current");
   const [chartData, setChartData] = useState<any[]>([]);
   const [winLoseData, setWinLoseData] = useState<any[]>([]);
+  const [heatmapData, setHeatmapData] = useState<any[]>([]);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -81,6 +82,35 @@ const PredictChart = () => {
 
     const prediction = formatGuessResult(record.guess_result);
     return checkThreePeriodsMatch(prediction, record.ext_result);
+  };
+
+  // 生成热力图数据
+  const generateHeatmapData = (items: PredictItem[], currentWinType: "current" | "two" | "any") => {
+    const hours = Array.from({ length: 24 }, (_, i) => i);
+    const periods = Array.from({ length: 12 }, (_, i) => i + 1);
+    
+    // 初始化数据
+    const data: [number, number, number][] = [];
+    
+    items.forEach(item => {
+      const date = new Date(item.guess_time * 1000);
+      const hour = date.getHours();
+      const minute = date.getMinutes();
+      const period = Math.floor(minute / 5) + 1;
+      
+      let isWin = false;
+      if (currentWinType === "current") {
+        isWin = checkCurrentPeriodWin(item);
+      } else if (currentWinType === "two") {
+        isWin = checkTwoPeriodsWin(item);
+      } else {
+        isWin = checkThreePeriodsWin(item);
+      }
+      
+      data.push([hour, period - 1, isWin ? 1 : 0]);
+    });
+    
+    return data;
   };
 
   // 处理数据并生成图表数据
@@ -145,8 +175,12 @@ const PredictChart = () => {
       };
     });
 
+    // 生成热力图数据
+    const heatmapData = generateHeatmapData(items, currentWinType);
+
     setChartData(chartData);
     setWinLoseData(winLoseData);
+    setHeatmapData(heatmapData);
   };
 
   // 计算胜率
@@ -268,6 +302,67 @@ const PredictChart = () => {
     }
   };
 
+  const heatmapOption = {
+    title: {
+      text: '开奖状态热力图',
+      left: 'center'
+    },
+    tooltip: {
+      position: 'top',
+      formatter: function (params: any) {
+        return `时间: ${params.data[0]}时 第${params.data[1] + 1}期<br/>状态: ${params.data[2] ? '中奖' : '未中奖'}`;
+      }
+    },
+    grid: {
+      top: '60px',
+      bottom: '10%',
+      left: '10%',
+      right: '10%'
+    },
+    xAxis: {
+      type: 'category',
+      data: Array.from({ length: 24 }, (_, i) => `${i}时`),
+      splitArea: {
+        show: true
+      }
+    },
+    yAxis: {
+      type: 'category',
+      data: Array.from({ length: 12 }, (_, i) => `${i + 1}期`),
+      splitArea: {
+        show: true
+      }
+    },
+    visualMap: {
+      min: 0,
+      max: 1,
+      calculable: false,
+      orient: 'horizontal',
+      left: 'center',
+      bottom: '0%',
+      inRange: {
+        color: ['#dcdcdc', '#52c41a']
+      },
+      textStyle: {
+        color: '#333'
+      }
+    },
+    series: [{
+      name: '开奖状态',
+      type: 'heatmap',
+      data: heatmapData,
+      label: {
+        show: false
+      },
+      emphasis: {
+        itemStyle: {
+          shadowBlur: 10,
+          shadowColor: 'rgba(0, 0, 0, 0.5)'
+        }
+      }
+    }]
+  };
+
   return (
     <MainLayout>
       <div className="predict-chart-container">
@@ -293,6 +388,17 @@ const PredictChart = () => {
             <Spin spinning={loading}>
               <ReactECharts
                 option={winLoseOption}
+                style={{ height: '400px' }}
+                notMerge={true}
+                opts={{ renderer: 'svg' }}
+              />
+            </Spin>
+          </Card>
+
+          <Card>
+            <Spin spinning={loading}>
+              <ReactECharts
+                option={heatmapOption}
                 style={{ height: '400px' }}
                 notMerge={true}
                 opts={{ renderer: 'svg' }}
