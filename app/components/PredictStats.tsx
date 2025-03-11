@@ -163,7 +163,7 @@ const PredictStats = ({
           <Radio.Button value="any">三期胜率</Radio.Button>
         </Radio.Group>
         <span>
-          当前总胜率：
+          {pageSize}条数据总胜率：
           {loading ? (
             <Spin size="small" />
           ) : (

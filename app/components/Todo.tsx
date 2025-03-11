@@ -167,7 +167,7 @@ const Todo = () => {
       setAnalysisLoading(false);
     }
   };
- 
+
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
@@ -234,7 +234,7 @@ const Todo = () => {
       render: (record: LotteryItem) => {
         const numbers = record.full_number || `${record.number_1}${record.number_2}${record.number_3}${record.number_4}${record.number_5}`;
         return (
-          <span 
+          <span
             style={{ cursor: 'pointer' }}
             onClick={() => {
               navigator.clipboard.writeText(numbers);
@@ -278,13 +278,13 @@ const Todo = () => {
               onChange={handleTimeRangeChange}
               className="lottery-time-picker"
             />
-            <Button 
+            <Button
               onClick={showAnalysisModal}
             >
               数据分析
             </Button>
-            <Button 
-              type="primary" 
+            <Button
+              type="primary"
               onClick={handleExportExcel}
               className="export-button"
             >
@@ -312,7 +312,7 @@ const Todo = () => {
                   style={{ width: 120 }}
                   placeholder="分析期数"
                 />
-                <Button 
+                <Button
                   type="primary"
                   onClick={() => fetchAnalysisData(lastNPeriods)}
                   loading={analysisLoading}
@@ -394,7 +394,7 @@ const Todo = () => {
                     </Card>
                   </Col>
                 ))}
-                
+
                 <Col span={8}>
                   <Card title="全局热门号码" loading={analysisLoading}>
                     {analysisData.global_hot_numbers.slice(0, 5).map((item, index) => (
@@ -404,7 +404,7 @@ const Todo = () => {
                     ))}
                   </Card>
                 </Col>
-                
+
                 <Col span={8}>
                   <Card title="全局冷门号码" loading={analysisLoading}>
                     {analysisData.global_cold_numbers.slice(0, 5).map((item, index) => (
@@ -414,7 +414,7 @@ const Todo = () => {
                     ))}
                   </Card>
                 </Col>
-                
+
                 <Col span={8}>
                   <Card title="整体统计" loading={analysisLoading}>
                     {analysisData.overall_statistics.slice(0, 5).map((item, index) => (
@@ -480,7 +480,7 @@ const Todo = () => {
                 setPageSize(size);
               },
               showSizeChanger: true,
-              pageSizeOptions: ['8','10', '20', '50', '100','500','1000'],
+              pageSizeOptions: ['8','10', '20', '50', '100','200','500','1000'],
               showTotal: (total) => `共 ${total} 条数据`,
             }}
           />
@@ -490,4 +490,4 @@ const Todo = () => {
   );
 };
 
-export default Todo; 
+export default Todo;

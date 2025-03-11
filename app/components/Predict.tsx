@@ -476,7 +476,8 @@ const Predict = () => {
     <MainLayout>
       <div className="predict-container">
         <div className="predict-header">
-          <h1 className="predict-title">AI预测记录 [ai_5_normal]</h1>
+          <h1 className="predict-title">[ai_5_normal]-策略</h1>
+          <div className="select-ai-type"></div>
           <div className="predict-controls">
          <div style={{marginRight: '10px',height: '30px'}}>
          <PredictStats 
