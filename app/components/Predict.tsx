@@ -439,9 +439,14 @@ const Predict = () => {
           return "等待开奖结果";
         }
 
+        // 找出是在哪一期中的
+        const matchedIndex = record.ext_result.findIndex((drawResult) => 
+          checkPeriodMatch(prediction, drawResult)
+        );
+
         return threePeriodsMatchResult ? (
           <Tag color="success">
-            <CheckCircleOutlined /> 中
+            <CheckCircleOutlined /> 中{matchedIndex !== -1 ? (matchedIndex + 1) : ''}
           </Tag>
         ) : (
           <Tag color="error">
