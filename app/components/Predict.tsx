@@ -507,6 +507,11 @@ const Predict = () => {
       title: "状态",
       key: "win_status",
       render: (record: PredictItem) => {
+
+        if(record.ext_result && record.ext_result.length !== 3){
+          return "等待开奖结果";
+        }
+
         const matchResult = checkThreePeriodsMatch(record);
         
         if (matchResult.status === 'waiting') {

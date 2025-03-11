@@ -1,6 +1,6 @@
+import { AppstoreOutlined, LineChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, RobotOutlined, UnorderedListOutlined } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
-import { useRouter, usePathname } from 'next/navigation';
-import { UnorderedListOutlined, RobotOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, LineChartOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 const { Sider, Content } = Layout;
@@ -26,6 +26,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'AI预测',
     },
     {
+      key: '/predict-chart',
+      icon: <LineChartOutlined />,
+      label: 'AI预测图表',
+    },
+    {
       key: '/aitype',
       icon: <AppstoreOutlined />,
       label: 'AI类型',
@@ -48,22 +53,22 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Sider 
-        theme="light" 
-        collapsible 
-        collapsed={collapsed} 
+      <Sider
+        theme="light"
+        collapsible
+        collapsed={collapsed}
         onCollapse={(value) => setCollapsed(value)}
         trigger={null}
       >
-        <div style={{ 
-          height: '64px', 
+        <div style={{
+          height: '64px',
           display: 'flex',
           marginLeft: '16px',
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '0 16px'
         }}>
-          
+
           {collapsed ? (
             <MenuUnfoldOutlined
               style={{ fontSize: '16px', cursor: 'pointer' }}
@@ -84,7 +89,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         />
       </Sider>
       <Layout>
-       
+
         <Content style={{ padding: '24px', background: '#fff', margin: '24px 16px' }}>
           {children}
         </Content>
@@ -93,4 +98,4 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   );
 };
 
-export default MainLayout; 
+export default MainLayout;
