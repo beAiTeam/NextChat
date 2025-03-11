@@ -142,6 +142,7 @@ const PredictChart = () => {
         params: {
           page: 1,
           page_size: size,
+          guess_type:'ai_5_normal',
         }
       });
       setData(response.data.data.data);

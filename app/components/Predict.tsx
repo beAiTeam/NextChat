@@ -75,6 +75,7 @@ const Predict = () => {
       const params: any = {
         page,
         page_size: size,
+        guess_type:'ai_5_normal',
       };
 
       const response = await axiosServices.get('/client/lot/get_ai_guess_list', {
@@ -539,7 +540,7 @@ const Predict = () => {
     <MainLayout>
       <div className="predict-container">
         <div className="predict-header">
-          <h1 className="predict-title">AI预测记录</h1>
+          <h1 className="predict-title">AI预测记录 [ai_5_normal]</h1>
           <div className="predict-controls">
             <Button 
               type="primary" 
