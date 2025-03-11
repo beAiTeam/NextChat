@@ -21,7 +21,6 @@
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
-    "@ant-design/plots": "^2.3.3",
     "@fortaine/fetch-event-source": "^3.0.6",
     "@hello-pangea/dnd": "^16.5.0",
     "@modelcontextprotocol/sdk": "^1.0.4",
@@ -40,7 +39,7 @@
     "idb-keyval": "^6.2.1",
     "lodash-es": "^4.17.21",
     "markdown-to-txt": "^2.0.1",
-    "mermaid": "10.5.0",
+    "mermaid": "^10.6.1",
     "nanoid": "^5.0.3",
     "next": "^14.1.1",
     "node-fetch": "^3.3.1",
@@ -96,8 +95,7 @@
     "webpack": "^5.88.1"
   },
   "resolutions": {
-    "lint-staged/yaml": "^2.2.2",
-    "qs": "6.11.2"
+    "lint-staged/yaml": "^2.2.2"
   },
   "packageManager": "yarn@1.22.19"
 }
