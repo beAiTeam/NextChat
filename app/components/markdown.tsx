@@ -7,7 +7,7 @@ import RemarkGfm from "remark-gfm";
 import RehypeHighlight from "rehype-highlight";
 import { useRef, useState, RefObject, useEffect, useMemo } from "react";
 import { copyToClipboard, useWindowSize } from "../utils";
-import mermaid from "mermaid";
+//import mermaid from "mermaid";
 import Locale from "../locales";
 import LoadingIcon from "../icons/three-dots.svg";
 import ReloadButtonIcon from "../icons/reload.svg";
@@ -25,51 +25,51 @@ import { IconButton } from "./button";
 import { useAppConfig } from "../store/config";
 import clsx from "clsx";
 
-export function Mermaid(props: { code: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [hasError, setHasError] = useState(false);
+// export function Mermaid(props: { code: string }) {
+//   const ref = useRef<HTMLDivElement>(null);
+//   const [hasError, setHasError] = useState(false);
 
-  useEffect(() => {
-    if (props.code && ref.current) {
-      mermaid
-        .run({
-          nodes: [ref.current],
-          suppressErrors: true,
-        })
-        .catch((e) => {
-          setHasError(true);
-          console.error("[Mermaid] ", e.message);
-        });
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [props.code]);
+//   useEffect(() => {
+//     if (props.code && ref.current) {
+//       mermaid
+//         .run({
+//           nodes: [ref.current],
+//           suppressErrors: true,
+//         })
+//         .catch((e) => {
+//           setHasError(true);
+//           console.error("[Mermaid] ", e.message);
+//         });
+//     }
+//     // eslint-disable-next-line react-hooks/exhaustive-deps
+//   }, [props.code]);
 
-  function viewSvgInNewWindow() {
-    const svg = ref.current?.querySelector("svg");
-    if (!svg) return;
-    const text = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([text], { type: "image/svg+xml" });
-    showImageModal(URL.createObjectURL(blob));
-  }
+//   function viewSvgInNewWindow() {
+//     const svg = ref.current?.querySelector("svg");
+//     if (!svg) return;
+//     const text = new XMLSerializer().serializeToString(svg);
+//     const blob = new Blob([text], { type: "image/svg+xml" });
+//     showImageModal(URL.createObjectURL(blob));
+//   }
 
-  if (hasError) {
-    return null;
-  }
+//   if (hasError) {
+//     return null;
+//   }
 
-  return (
-    <div
-      className={clsx("no-dark", "mermaid")}
-      style={{
-        cursor: "pointer",
-        overflow: "auto",
-      }}
-      ref={ref}
-      onClick={() => viewSvgInNewWindow()}
-    >
-      {props.code}
-    </div>
-  );
-}
+//   return (
+//     <div
+//       className={clsx("no-dark", "mermaid")}
+//       style={{
+//         cursor: "pointer",
+//         overflow: "auto",
+//       }}
+//       ref={ref}
+//       onClick={() => viewSvgInNewWindow()}
+//     >
+//       {props.code}
+//     </div>
+//   );
+// }
 
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null);
@@ -145,9 +145,9 @@ export function PreCode(props: { children: any }) {
         ></span>
         {props.children}
       </pre>
-      {mermaidCode.length > 0 && (
+      {/*mermaidCode.length > 0 && (
         <Mermaid code={mermaidCode} key={mermaidCode} />
-      )}
+      )}*/}
       {htmlCode.length > 0 && enableArtifacts && (
         <FullScreen className="no-dark html" right={70}>
           <ArtifactsShareButton
