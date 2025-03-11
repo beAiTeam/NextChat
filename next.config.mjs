@@ -32,6 +32,11 @@ const nextConfig = {
       child_process: false,
     };
 
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'cytoscape': 'cytoscape/dist/cytoscape.cjs.js',
+    };
+
     return config;
   },
   output: mode,
