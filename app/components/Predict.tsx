@@ -45,7 +45,7 @@ interface PredictItem {
   guess_period: string;
   guess_time: number;
   guess_result: GuessResult | null;
-  guess_type: "ai_5_normal";
+  guess_type: string;
   ext_result: DrawResult[] | null;
   ai_type: AiTypeConfig;
   draw_status: "created" | "drawed" | "executing" | "finished" | "failed";
@@ -53,7 +53,11 @@ interface PredictItem {
   is_success: boolean;
 }
 
-const Predict = () => {
+interface PredictProps {
+  guess_type: string;
+}
+
+const Predict = ({ guess_type }: PredictProps) => {
   const localStorage = safeLocalStorage();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(() => {
@@ -78,7 +82,7 @@ const Predict = () => {
       const params: any = {
         page,
         page_size: size,
-        guess_type: "ai_5_normal",
+        guess_type: guess_type,
       };
 
       const response = await axiosServices.get(
@@ -476,16 +480,16 @@ const Predict = () => {
     <MainLayout>
       <div className="predict-container">
         <div className="predict-header">
-          <h1 className="predict-title">[ai_5_normal]-策略</h1>
+          <h1 className="predict-title">[{guess_type}]-策略</h1>
           <div className="select-ai-type"></div>
           <div className="predict-controls">
          <div style={{marginRight: '10px',height: '30px'}}>
          <PredictStats 
-          
-  defaultPageSize={100}
-  defaultWinType="current"
-  onDataChange={(data) => console.log('数据更新:', data)}
-  onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
+          guess_type={guess_type}
+          defaultPageSize={100}
+          defaultWinType="current"
+          onDataChange={(data) => console.log('数据更新:', data)}
+          onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
 />
          </div>
             <Button
@@ -513,7 +517,7 @@ const Predict = () => {
               current: currentPage,
               pageSize: pageSize,
               total: total,
-              onChange: (page, size) => {
+              onChange: (page: number, size: number) => {
                 setCurrentPage(page);
                 setPageSize(size);
               },
@@ -528,7 +532,7 @@ const Predict = () => {
                 "500",
                 "1000",
               ],
-              showTotal: (total) => `共 ${total} 条数据`,
+              showTotal: (total: number) => `共 ${total} 条数据`,
             }}
           />
         </div>

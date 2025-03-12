@@ -26,6 +26,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'AI预测',
     },
     {
+      key: '/predict-plus',
+      icon: <LineChartOutlined />,
+      label: 'AI预测Plus',
+    },
+    {
       key: '/predict-chart',
       icon: <LineChartOutlined />,
       label: 'AI预测图表',

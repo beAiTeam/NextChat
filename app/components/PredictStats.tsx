@@ -17,7 +17,7 @@ interface PredictItem {
   guess_period: string;
   guess_time: number;
   guess_result: GuessResult | null;
-  guess_type: "ai_5_normal";
+  guess_type: string;
   ext_result: DrawResult[] | null;
   draw_status: "created" | "drawed" | "executing" | "finished" | "failed";
   retry_count: number;
@@ -25,6 +25,7 @@ interface PredictItem {
 }
 
 interface PredictStatsProps {
+  guess_type: string;
   onDataChange?: (data: PredictItem[]) => void;
   onWinTypeChange?: (winType: "current" | "two" | "any") => void;
   defaultPageSize?: number;
@@ -32,6 +33,7 @@ interface PredictStatsProps {
 }
 
 const PredictStats = ({ 
+  guess_type,
   onDataChange, 
   onWinTypeChange,
   defaultPageSize = 100,
@@ -113,7 +115,7 @@ const PredictStats = ({
           params: {
             page: 1,
             page_size: size,
-            guess_type: "ai_5_normal",
+            guess_type: guess_type,
           },
         },
       );
