@@ -37,6 +37,20 @@ export const checkPeriodMatch = (prediction: string, drawResult: DrawResult): bo
   return isFirstDigitMatched && isAnyLastFourDigitsMatched;
 };
 
+export const checkPeriodMatchForOneShot = (prediction: string, drawResult: DrawResult): boolean => {
+  if (!prediction || prediction === "暂无结果") return false;
+
+  const firstDigitOfPrediction = prediction[0];
+  const lastFourDigits = prediction.slice(1);
+  const fullNumberDigits = drawResult.full_number.split('');
+
+  // 否则继续检查原有条件
+  const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
+   
+
+  return isFirstDigitMatched;
+};
+
 // 检查当期是否中奖
 export const checkCurrentPeriodMatch = (prediction: string, drawResults: DrawResult[] | null, guessPeriod: string): boolean => {
   if (!drawResults || drawResults.length === 0) return false;
@@ -109,6 +123,7 @@ export const calculateBetProfit = (prediction: string, drawResults: DrawResult[]
     }
 
     const isWin = checkPeriodMatch(prediction, drawResults[i]);
+    // const isWin = checkPeriodMatchForOneShot(prediction, drawResults[i]);
     
     if (isWin) {
       // 赢了，获得赔率倍数的收益

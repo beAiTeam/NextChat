@@ -41,7 +41,33 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
       footer={null}
       width={800}
     >
-      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', userSelect: 'text' }}>
+      <h4>AI策略完整配置：
+          <Button 
+            icon={<CopyOutlined />} 
+            type="link" 
+            onClick={() => copyToClipboard(JSON.stringify(data?.ai_type || {}, null, 2))}
+          >
+            复制
+          </Button>
+        </h4>
+        <div style={{ background: '#f5f5f5', padding: 16, maxHeight: 300, overflow: 'auto', userSelect: 'text' }}>
+          <pre>{JSON.stringify(data?.ai_type || {}, null, 2)}</pre>
+        </div>
+       
+        <h4>AI策略信息：</h4>
+        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, userSelect: 'text' }}>
+          <p><strong>策略名称：</strong>{data?.ai_type?.name}</p>
+          <p><strong>策略类型：</strong>{data?.ai_type?.type}</p>
+          <p><strong>AI模型：</strong>{data?.ai_type?.config?.model}</p>
+          <p><strong>温度：</strong>{data?.ai_type?.config?.temperature}</p>
+          <p><strong>最大Token：</strong>{data?.ai_type?.config?.max_tokens}</p>
+          <p><strong>冷期：</strong>{data?.ai_type?.config?.cold_period}</p>
+          <p><strong>热期：</strong>{data?.ai_type?.config?.hot_period}</p>
+          <p><strong>缺失期：</strong>{data?.ai_type?.config?.missing_period}</p>
+          <p><strong>获取期：</strong>{data?.ai_type?.config?.get_period}</p>
+        </div>
+
         <h4>提示词：
           <Button 
             icon={<CopyOutlined />} 
@@ -51,7 +77,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
             复制
           </Button>
         </h4>
-        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 300, overflow: 'auto' }}>
+        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 300, overflow: 'auto', userSelect: 'text' }}>
           {data?.all_prompt}
         </div>
         
@@ -64,9 +90,11 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
             复制
           </Button>
         </h4>
-        <div style={{ background: '#f5f5f5', padding: 16, maxHeight: 100, overflow: 'auto' }}>
+        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 100, overflow: 'auto', userSelect: 'text' }}>
           {data?.result}
         </div>
+
+       
       </div>
     </Modal>
   );
@@ -85,6 +113,14 @@ const Log = () => {
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState<any>(null);
   const [form] = Form.useForm<LogFormValues>();
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      message.success('复制成功');
+    }).catch(() => {
+      message.error('复制失败');
+    });
+  };
 
   const fetchData = async (page: number, size: number, filters?: any) => {
     setLoading(true);
@@ -153,6 +189,35 @@ const Log = () => {
     setDetailModalVisible(true);
   };
 
+  const renderColumnWithCopy = (value: any, render?: (value: any) => React.ReactNode) => {
+    const displayValue = render ? render(value) : value;
+    if (!value) return null;
+    
+    return (
+      <div 
+        onClick={(e) => {
+          e.stopPropagation();
+          copyToClipboard(String(value));
+        }}
+        style={{ 
+          cursor: 'pointer',
+          transition: 'background 0.3s',
+          padding: '4px 8px',
+          margin: '-4px -8px',
+          borderRadius: '4px',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = '#f5f5f5';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+        }}
+      >
+        {displayValue}
+      </div>
+    );
+  };
+
   const columns = [
     {
       title: "ID",
@@ -160,34 +225,38 @@ const Log = () => {
       key: "_id",
       width: 220,
       ellipsis: true,
+      render: (text: string) => renderColumnWithCopy(text)
     },
     {
-      title: "策略ID",
-      dataIndex: ["ai_type", "_id"],
-      key: "ai_type_id",
-      width: 220,
-      ellipsis: true,
+      title: "AI模型",
+      dataIndex: ["ai_type", "config", "model"],
+      key: "ai_model",
+      width: 120,
+      render: (text: string) => renderColumnWithCopy(text)
     },
     {
       title: "策略名称",
       dataIndex: ["ai_type", "name"],
       key: "ai_type_name",
+      render: (text: string) => renderColumnWithCopy(text)
     },
     {
       title: "策略类型",
       dataIndex: ["ai_type", "type"],
       key: "ai_type",
+      render: (text: string) => renderColumnWithCopy(text)
     },
     {
       title: "预测期数",
       dataIndex: "guess_period",
       key: "guess_period",
+      render: (text: string) => renderColumnWithCopy(text)
     },
     {
       title: "预测时间",
       dataIndex: "guess_time",
       key: "guess_time",
-      render: (text: number) => dayjs(text * 1000).format('YYYY-MM-DD HH:mm:ss'),
+      render: (text: number) => renderColumnWithCopy(text, (value) => dayjs(value * 1000).format('YYYY-MM-DD HH:mm:ss'))
     },
     {
       title: "预测结果",
@@ -195,12 +264,13 @@ const Log = () => {
       key: "result",
       width: 200,
       ellipsis: true,
+      render: (text: string) => renderColumnWithCopy(text)
     },
     {
       title: "创建时间",
       dataIndex: "created_at",
       key: "created_at",
-      render: (text: string) => dayjs(text).format('YYYY-MM-DD HH:mm:ss'),
+      render: (text: string) => renderColumnWithCopy(text, (value) => dayjs(value).format('YYYY-MM-DD HH:mm:ss'))
     },
     {
       title: "操作",
@@ -219,7 +289,7 @@ const Log = () => {
 
   return (
     <MainLayout>
-      <div className="ai-log-container">
+      <div className="ai-log-container" style={{ userSelect: 'text' }}>
         <div className="ai-log-header">
           <h1 className="ai-log-title">AI预测日志</h1>
           <div className="ai-log-controls">
@@ -293,6 +363,12 @@ const Log = () => {
               pageSizeOptions: ['10', '20', '50', '100'],
               showTotal: (total: number) => `共 ${total} 条数据`,
             }}
+            onRow={() => ({
+              style: {
+                cursor: 'default',
+                userSelect: 'text'
+              }
+            })}
           />
         </div>
 
