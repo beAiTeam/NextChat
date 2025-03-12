@@ -41,6 +41,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'AI类型',
     },
     {
+      key: '/log',
+      icon: <AppstoreOutlined />,
+      label: 'Log',
+    },
+    {
       key: '/prompt',
       icon: <RobotOutlined />,
       label: 'Prompt管理',

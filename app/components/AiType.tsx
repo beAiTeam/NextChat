@@ -1,40 +1,18 @@
 "use client";
 
-import { Table, Button, Card, Row, Col, Tag, Modal, Typography, Divider, Tooltip, Space, Form, Input, Select } from "antd";
+import { EditOutlined, InfoCircleOutlined, PlusOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Card, Col, Form, Input, Modal, Row, Select, Table, Typography } from "antd";
 import { useEffect, useState } from "react";
+import toast from 'react-hot-toast';
+import { AiTypeConfig, LotAiGuessModel, LotAiGuessType } from "../types/ai";
+import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
 import './AiType.scss';
-import toast from 'react-hot-toast';
 import MainLayout from './Layout';
-import { ReloadOutlined, InfoCircleOutlined, EditOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons';
-import { safeLocalStorage } from "../utils";
 
 const { Title, Text, Paragraph } = Typography;
 const { TextArea } = Input;
 const { Option } = Select;
-
-// 枚举定义
-enum LotAiGuessModel {
-  Gpt4O = "gpt-4o",
-  Gpt4OMini = "gpt-4o-mini",
-  O3Mini = "o3-mini",
-}
-
-enum LotAiGuessType {
-  Ai5_Normal = "ai_5_normal",
-}
-
-interface AiTypeConfig {
-  _id: string;
-  created_at: string;
-  updated_at: string;
-  name: string;
-  type: string;
-  config: {
-    prompt: string;
-    model: string;
-  }
-}
 
 interface UpdateAiTypeRequest {
   id?: string | null;
@@ -44,6 +22,13 @@ interface UpdateAiTypeRequest {
     prompt: string;
     model: string;
   } | null;
+}
+
+interface AiTypeFormValues {
+  name: string;
+  type: string;
+  model: string;
+  prompt: string;
 }
 
 const AiType = () => {
@@ -61,7 +46,7 @@ const AiType = () => {
   const [currentAiType, setCurrentAiType] = useState<AiTypeConfig | null>(null);
   const [isFormModalVisible, setIsFormModalVisible] = useState(false);
   const [editingAiType, setEditingAiType] = useState<AiTypeConfig | null>(null);
-  const [form] = Form.useForm();
+  const [form] = Form.useForm<AiTypeFormValues>();
   const [submitting, setSubmitting] = useState(false);
 
   const fetchData = async (page: number, size: number) => {

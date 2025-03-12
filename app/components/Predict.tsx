@@ -6,23 +6,26 @@ import {
   InfoCircleOutlined,
   ReloadOutlined,
 } from "@ant-design/icons";
-import { Button, Card, Col, Modal, Row, Table, Tag, Typography } from "antd";
-import { useEffect, useState } from "react";
+import { Button, Card, Col, Modal, Row, Table, Tag, Tooltip, Typography } from "antd";
+import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
 import {
+  BETTING_ODDS,
+  calculateBetProfit,
+  calculateTotalProfit,
   checkCurrentPeriodMatch,
   checkPeriodMatch,
   checkThreePeriodsMatch,
   DrawResult,
   formatGuessResult,
-  GuessResult,
+  GuessResult
 } from "../utils/predict-utils";
 import MainLayout from "./Layout";
 import "./Predict.scss";
-import PredictStats from "./PredictStats";
+import PredictStats, { PredictStatsRef } from "./PredictStats";
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -75,6 +78,7 @@ const Predict = ({ guess_type }: PredictProps) => {
   const [currentDrawResults, setCurrentDrawResults] = useState<
     DrawResult[] | null
   >(null);
+  const statsRef = useRef<PredictStatsRef>(null);
 
   const fetchData = async (page: number, size: number) => {
     setLoading(true);
@@ -113,6 +117,7 @@ const Predict = ({ guess_type }: PredictProps) => {
   const handleRefresh = () => {
     setCurrentPage(1); // 重置页码为1
     fetchData(1, pageSize); // 刷新数据
+    statsRef.current?.refresh(); // 刷新 PredictStats
   };
 
   const showAiTypeModal = (aiType: AiTypeConfig) => {
@@ -468,6 +473,49 @@ const Predict = ({ guess_type }: PredictProps) => {
       },
     },
     {
+      title: () => {
+        const totalProfit = calculateTotalProfit(data);
+        return (
+          <Tooltip title={`赔率：${BETTING_ODDS}`}>
+            <span>
+              盈亏
+              <span style={{ 
+                color: totalProfit >= 0 ? '#52c41a' : '#ff4d4f',
+                marginLeft: '4px'
+              }}>
+                ({totalProfit >= 0 ? '+' : ''}{totalProfit})
+              </span>
+            </span>
+          </Tooltip>
+        );
+      },
+      key: "profit",
+      render: (record: PredictItem) => {
+        const betResult = calculateBetProfit(
+          formatGuessResult(record.guess_result),
+          record.ext_result
+        );
+
+        if (betResult.betDetails === "等待开奖") {
+          return betResult.betDetails;
+        }
+
+        return (
+          <div>
+            <span style={{ 
+              color: betResult.profit >= 0 ? '#52c41a' : '#ff4d4f',
+              marginRight: '8px'
+            }}>
+              {betResult.profit >= 0 ? '+' : ''}{betResult.profit}
+            </span>
+            <span style={{ color: '#8c8c8c', fontSize: '12px' }}>
+              ({betResult.betDetails})
+            </span>
+          </div>
+        );
+      },
+    },
+    {
       title: "预测时间",
       dataIndex: "guess_time",
       key: "guess_time",
@@ -485,12 +533,13 @@ const Predict = ({ guess_type }: PredictProps) => {
           <div className="predict-controls">
          <div style={{marginRight: '10px',height: '30px'}}>
          <PredictStats 
+          ref={statsRef}
           guess_type={guess_type}
           defaultPageSize={100}
           defaultWinType="current"
           onDataChange={(data) => console.log('数据更新:', data)}
           onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
-/>
+         />
          </div>
             <Button
               type="primary"
