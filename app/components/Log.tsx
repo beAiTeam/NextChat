@@ -309,13 +309,13 @@ const Log = () => {
             onFinish={handleSearch}
           >
             <Form.Item name="ai_type_id" label="策略ID">
-              <Input placeholder="请输入策略ID" style={{ width: 200 }} />
+              <Input placeholder="请输入策略ID" style={{ width: 200, backgroundColor: 'white' }} />
             </Form.Item>
             
             <Form.Item name="ai_type" label="策略类型">
               <Select 
                 placeholder="请选择策略类型" 
-                style={{ width: 200 }}
+                style={{ width: 200, backgroundColor: 'white' }}
                 allowClear
               >
                 <Option value={LotAiGuessType.Ai5_Normal}>AI 5位数预测</Option>
@@ -326,11 +326,11 @@ const Log = () => {
             </Form.Item>
 
             <Form.Item name="guess_period" label="预测期数">
-              <Input placeholder="请输入预测期数" style={{ width: 200 }} />
+              <Input placeholder="请输入预测期数" style={{ width: 200, backgroundColor: 'white' }} />
             </Form.Item>
 
             <Form.Item name="guess_time" label="预测时间">
-              <DatePicker showTime style={{ width: 200 }} />
+              <DatePicker showTime style={{ width: 200, backgroundColor: 'white' }} />
             </Form.Item>
 
             <Form.Item>
