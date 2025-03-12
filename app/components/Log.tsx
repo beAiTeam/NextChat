@@ -1,6 +1,6 @@
 "use client";
 
-import { CopyOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { CopyOutlined, EyeOutlined } from '@ant-design/icons';
 import { Button, Card, DatePicker, Form, Input, Modal, Select, Table, message } from "antd";
 import dayjs from 'dayjs';
 import { useEffect, useState } from "react";
@@ -292,24 +292,18 @@ const Log = () => {
       <div className="ai-log-container" style={{ userSelect: 'text' }}>
         <div className="ai-log-header">
           <h1 className="ai-log-title">AI预测日志</h1>
-          <div className="ai-log-controls">
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleRefresh}
-            >
-              刷新
-            </Button>
-          </div>
+          
         </div>
 
-        <Card className="ai-log-search" style={{ marginBottom: 16 }}>
+        <Card className="ai-log-search" style={{ marginBottom: 16 ,marginTop:20}}>
           <Form
             form={form}
             layout="inline"
             onFinish={handleSearch}
+            style={{gap:10}}
           >
             <Form.Item name="ai_type_id" label="策略ID">
-              <Input placeholder="请输入策略ID" style={{ width: 200, backgroundColor: 'white' }} />
+              <Input placeholder="请输入策略ID" style={{ width: 350, backgroundColor: 'white' }} />
             </Form.Item>
             
             <Form.Item name="ai_type" label="策略类型">
@@ -326,11 +320,11 @@ const Log = () => {
             </Form.Item>
 
             <Form.Item name="guess_period" label="预测期数">
-              <Input placeholder="请输入预测期数" style={{ width: 200, backgroundColor: 'white' }} />
+              <Input placeholder="请输入预测期数" style={{ width: 300, backgroundColor: 'white' }} />
             </Form.Item>
 
             <Form.Item name="guess_time" label="预测时间">
-              <DatePicker showTime style={{ width: 200, backgroundColor: 'white' }} />
+              <DatePicker showTime style={{ width: 200, backgroundColor: 'white',   }} />
             </Form.Item>
 
             <Form.Item>
