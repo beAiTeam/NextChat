@@ -1,4 +1,4 @@
-import { AppstoreOutlined, LineChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, RobotOutlined, UnorderedListOutlined } from '@ant-design/icons';
+import { AppstoreOutlined, FileSearchOutlined, FireOutlined, LineChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, RobotOutlined, RocketOutlined } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -17,17 +17,17 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   const menuItems = [
     {
       key: '/todo',
-      icon: <UnorderedListOutlined />,
+      icon: <FileSearchOutlined />,
       label: 'List',
     },
     {
       key: '/predict',
-      icon: <LineChartOutlined />,
+      icon: <FireOutlined />,
       label: 'AI预测',
     },
     {
       key: '/predict-plus',
-      icon: <LineChartOutlined />,
+      icon: <RocketOutlined />,
       label: 'AI预测Plus',
     },
     {

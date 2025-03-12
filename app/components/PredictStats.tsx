@@ -133,6 +133,11 @@ const PredictStats = ({
     fetchData(pageSize);
   }, [pageSize]);
 
+  // 监听guess_type变化，重新获取数据
+  useEffect(() => {
+    fetchData(pageSize);
+  }, [guess_type]);
+
   const handleWinTypeChange = (e: any) => {
     const newWinType = e.target.value;
     setWinType(newWinType);

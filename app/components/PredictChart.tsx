@@ -1,8 +1,8 @@
 "use client";
 
-import { Card, Space, Spin } from "antd";
+import { Card, Select, Space, Spin } from "antd";
 import ReactECharts from 'echarts-for-react';
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   checkCurrentPeriodMatch,
   checkThreePeriodsMatch,
@@ -22,7 +22,7 @@ interface PredictItem {
   guess_period: string;
   guess_time: number;
   guess_result: GuessResult | null;
-  guess_type: "ai_5_normal";
+  guess_type: string;
   ext_result: DrawResult[] | null;
   draw_status: "created" | "drawed" | "executing" | "finished" | "failed";
   retry_count: number;
@@ -37,6 +37,7 @@ const PredictChart = () => {
   const [chartData, setChartData] = useState<any[]>([]);
   const [winLoseData, setWinLoseData] = useState<any[]>([]);
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
+  const [guessType, setGuessType] = useState<string>("ai_5_normal");
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -209,6 +210,10 @@ const PredictChart = () => {
     processChartData(data, newWinType);
   };
 
+  useEffect(() => {
+    processChartData(data, winType);
+  }, [winType]);
+
   const winRateOption = {
     title: {
       text: '胜率趋势',
@@ -367,7 +372,20 @@ const PredictChart = () => {
     <MainLayout>
       <div className="predict-chart-container">
         <Space direction="vertical" size="large" style={{ width: "100%" }}>
+          <Space>
+            <span>预测策略：</span>
+            <Select
+              value={guessType}
+              onChange={setGuessType}
+              style={{ width: 150 }}
+              options={[
+                { value: "ai_5_normal", label: "AI-5" },
+                { value: "ai_5_plus", label: "AI-5 Plus" },
+              ]}
+            />
+          </Space>
           <PredictStats 
+            guess_type={guessType}
             onDataChange={handleDataChange}
             onWinTypeChange={handleWinTypeChange}
             defaultWinType={winType}
