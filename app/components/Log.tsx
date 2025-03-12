@@ -3,11 +3,14 @@
 import { CopyOutlined, EyeOutlined } from '@ant-design/icons';
 import { Button, Card, DatePicker, Form, Input, Modal, Select, Table, message } from "antd";
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat';
 import { useEffect, useState } from "react";
 import { AiLogItem, LotAiGuessType } from "../types/ai";
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
 import MainLayout from './Layout';
+
+dayjs.extend(customParseFormat);
 
 const { Option } = Select;
 
@@ -154,7 +157,14 @@ const Log = () => {
   };
 
   useEffect(() => {
-    const filters = form.getFieldsValue(true);
+    const values = form.getFieldsValue();
+    const filters = { ...values };
+    
+    // 转换日期为时间戳
+    if (filters.guess_time && dayjs.isDayjs(filters.guess_time)) {
+      filters.guess_time = Math.floor(filters.guess_time.valueOf() / 1000);
+    }
+    
     fetchData(currentPage, pageSize, filters);
   }, [currentPage, pageSize]);
 
@@ -170,11 +180,14 @@ const Log = () => {
 
   const handleSearch = () => {
     setCurrentPage(1);
-    const filters = form.getFieldsValue(true);
-    // 转换日期格式
-    if (filters.guess_time) {
-      filters.guess_time = filters.guess_time.format('YYYY-MM-DD HH:mm:ss');
+    const values = form.getFieldsValue();
+    const filters = { ...values };
+    
+    // 转换日期为时间戳
+    if (filters.guess_time && dayjs.isDayjs(filters.guess_time)) {
+      filters.guess_time = Math.floor(filters.guess_time.valueOf() / 1000);
     }
+    
     fetchData(1, pageSize, filters);
   };
 
@@ -324,7 +337,19 @@ const Log = () => {
             </Form.Item>
 
             <Form.Item name="guess_time" label="预测时间">
-              <DatePicker showTime style={{ width: 200, backgroundColor: 'white',   }} />
+              <DatePicker 
+                showTime 
+                style={{ width: 200, backgroundColor: 'white' }} 
+                format="YYYY-MM-DD HH:mm:ss"
+                onChange={(date) => {
+                  if (date) {
+                    form.setFields([{
+                      name: 'guess_time',
+                      value: date
+                    }]);
+                  }
+                }}
+              />
             </Form.Item>
 
             <Form.Item>
