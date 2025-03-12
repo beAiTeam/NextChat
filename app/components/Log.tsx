@@ -1,0 +1,309 @@
+"use client";
+
+import { CopyOutlined, EyeOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Card, DatePicker, Form, Input, Modal, Select, Table, message } from "antd";
+import dayjs from 'dayjs';
+import { useEffect, useState } from "react";
+import { AiLogItem, LotAiGuessType } from "../types/ai";
+import { safeLocalStorage } from "../utils";
+import axiosServices from "../utils/my-axios";
+import MainLayout from './Layout';
+
+const { Option } = Select;
+
+interface LogFormValues {
+  ai_type_id?: string;
+  ai_type?: string;
+  guess_period?: string;
+  guess_time?: dayjs.Dayjs;
+}
+
+interface DetailModalProps {
+  visible: boolean;
+  data: any;
+  onClose: () => void;
+}
+
+const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => {
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      message.success('复制成功');
+    }).catch(() => {
+      message.error('复制失败');
+    });
+  };
+
+  return (
+    <Modal
+      title="预测详情"
+      open={visible}
+      onCancel={onClose}
+      footer={null}
+      width={800}
+    >
+      <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+        <h4>提示词：
+          <Button 
+            icon={<CopyOutlined />} 
+            type="link" 
+            onClick={() => copyToClipboard(data?.all_prompt || '')}
+          >
+            复制
+          </Button>
+        </h4>
+        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 300, overflow: 'auto' }}>
+          {data?.all_prompt}
+        </div>
+        
+        <h4>预测结果：
+          <Button 
+            icon={<CopyOutlined />} 
+            type="link" 
+            onClick={() => copyToClipboard(data?.result || '')}
+          >
+            复制
+          </Button>
+        </h4>
+        <div style={{ background: '#f5f5f5', padding: 16, maxHeight: 100, overflow: 'auto' }}>
+          {data?.result}
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const Log = () => {
+  const localStorage = safeLocalStorage();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(() => {
+    const savedPageSize = localStorage.getItem('ai_log_page_size');
+    return savedPageSize ? parseInt(savedPageSize) : 10;
+  });
+  const [loading, setLoading] = useState(false);
+  const [data, setData] = useState<AiLogItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [detailModalVisible, setDetailModalVisible] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<any>(null);
+  const [form] = Form.useForm<LogFormValues>();
+
+  const fetchData = async (page: number, size: number, filters?: any) => {
+    setLoading(true);
+    try {
+      const params: any = {
+        page,
+        page_size: size,
+        ...filters
+      };
+
+      // 移除空值
+      Object.keys(params).forEach(key => {
+        if (params[key] === undefined || params[key] === null || params[key] === '') {
+          delete params[key];
+        }
+      });
+
+      const response = await axiosServices.get('/client/lot/get_ai_log_list', {
+        params
+      });
+      
+      if (response.data && response.data.code === 1) {
+        setData(response.data.data.data || []);
+        setTotal(response.data.data.total || 0);
+      }
+    } catch (error) {
+      console.error('获取数据失败:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const filters = form.getFieldsValue(true);
+    fetchData(currentPage, pageSize, filters);
+  }, [currentPage, pageSize]);
+
+  useEffect(() => {
+    localStorage.setItem('ai_log_page_size', pageSize.toString());
+  }, [pageSize]);
+
+  const handleRefresh = () => {
+    setCurrentPage(1);
+    const filters = form.getFieldsValue(true);
+    fetchData(1, pageSize, filters);
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    const filters = form.getFieldsValue(true);
+    // 转换日期格式
+    if (filters.guess_time) {
+      filters.guess_time = filters.guess_time.format('YYYY-MM-DD HH:mm:ss');
+    }
+    fetchData(1, pageSize, filters);
+  };
+
+  const handleReset = () => {
+    form.resetFields();
+    setCurrentPage(1);
+    fetchData(1, pageSize, {});
+  };
+
+  const showDetail = (record: any) => {
+    setSelectedRecord(record);
+    setDetailModalVisible(true);
+  };
+
+  const columns = [
+    {
+      title: "ID",
+      dataIndex: "_id",
+      key: "_id",
+      width: 220,
+      ellipsis: true,
+    },
+    {
+      title: "策略ID",
+      dataIndex: ["ai_type", "_id"],
+      key: "ai_type_id",
+      width: 220,
+      ellipsis: true,
+    },
+    {
+      title: "策略名称",
+      dataIndex: ["ai_type", "name"],
+      key: "ai_type_name",
+    },
+    {
+      title: "策略类型",
+      dataIndex: ["ai_type", "type"],
+      key: "ai_type",
+    },
+    {
+      title: "预测期数",
+      dataIndex: "guess_period",
+      key: "guess_period",
+    },
+    {
+      title: "预测时间",
+      dataIndex: "guess_time",
+      key: "guess_time",
+      render: (text: number) => dayjs(text * 1000).format('YYYY-MM-DD HH:mm:ss'),
+    },
+    {
+      title: "预测结果",
+      dataIndex: "result",
+      key: "result",
+      width: 200,
+      ellipsis: true,
+    },
+    {
+      title: "创建时间",
+      dataIndex: "created_at",
+      key: "created_at",
+      render: (text: string) => dayjs(text).format('YYYY-MM-DD HH:mm:ss'),
+    },
+    {
+      title: "操作",
+      key: "action",
+      render: (_: any, record: any) => (
+        <Button 
+          type="link" 
+          icon={<EyeOutlined />}
+          onClick={() => showDetail(record)}
+        >
+          查看详情
+        </Button>
+      ),
+    }
+  ];
+
+  return (
+    <MainLayout>
+      <div className="ai-log-container">
+        <div className="ai-log-header">
+          <h1 className="ai-log-title">AI预测日志</h1>
+          <div className="ai-log-controls">
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={handleRefresh}
+            >
+              刷新
+            </Button>
+          </div>
+        </div>
+
+        <Card className="ai-log-search" style={{ marginBottom: 16 }}>
+          <Form
+            form={form}
+            layout="inline"
+            onFinish={handleSearch}
+          >
+            <Form.Item name="ai_type_id" label="策略ID">
+              <Input placeholder="请输入策略ID" style={{ width: 200 }} />
+            </Form.Item>
+            
+            <Form.Item name="ai_type" label="策略类型">
+              <Select 
+                placeholder="请选择策略类型" 
+                style={{ width: 200 }}
+                allowClear
+              >
+                <Option value={LotAiGuessType.Ai5_Normal}>AI 5位数预测</Option>
+                <Option value={LotAiGuessType.Ai5_Plus}>AI 5位数Plus预测</Option>
+                <Option value={LotAiGuessType.Zlzdm}>智能指点迷</Option>
+                <Option value={LotAiGuessType.Ylzhb}>预料之后必</Option>
+              </Select>
+            </Form.Item>
+
+            <Form.Item name="guess_period" label="预测期数">
+              <Input placeholder="请输入预测期数" style={{ width: 200 }} />
+            </Form.Item>
+
+            <Form.Item name="guess_time" label="预测时间">
+              <DatePicker showTime style={{ width: 200 }} />
+            </Form.Item>
+
+            <Form.Item>
+              <Button type="primary" htmlType="submit">
+                查询
+              </Button>
+              <Button style={{ marginLeft: 8 }} onClick={handleReset}>
+                重置
+              </Button>
+            </Form.Item>
+          </Form>
+        </Card>
+
+        <div className="ai-log-table-container">
+          <Table
+            loading={loading}
+            columns={columns}
+            dataSource={data}
+            rowKey="_id"
+            scroll={{ y: 'calc(100vh - 350px)' }}
+            pagination={{
+              current: currentPage,
+              pageSize: pageSize,
+              total: total,
+              onChange: (page: number, size: number) => {
+                setCurrentPage(page);
+                setPageSize(size);
+              },
+              showSizeChanger: true,
+              pageSizeOptions: ['10', '20', '50', '100'],
+              showTotal: (total: number) => `共 ${total} 条数据`,
+            }}
+          />
+        </div>
+
+        <DetailModal
+          visible={detailModalVisible}
+          data={selectedRecord}
+          onClose={() => setDetailModalVisible(false)}
+        />
+      </div>
+    </MainLayout>
+  );
+};
+
+export default Log; 
