@@ -45,10 +45,22 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
       width={800}
     >
       <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', userSelect: 'text' }}>
+        <h4>提示词：
+          <Button
+              icon={<CopyOutlined />}
+              type="link"
+              onClick={() => copyToClipboard(data?.all_prompt || '')}
+          >
+            复制
+          </Button>
+        </h4>
+        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 300, overflow: 'auto', userSelect: 'text' }}>
+          {data?.all_prompt}
+        </div>
       <h4>AI策略完整配置：
-          <Button 
-            icon={<CopyOutlined />} 
-            type="link" 
+          <Button
+            icon={<CopyOutlined />}
+            type="link"
             onClick={() => copyToClipboard(JSON.stringify(data?.ai_type || {}, null, 2))}
           >
             复制
@@ -57,7 +69,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
         <div style={{ background: '#f5f5f5', padding: 16, maxHeight: 300, overflow: 'auto', userSelect: 'text' }}>
           <pre>{JSON.stringify(data?.ai_type || {}, null, 2)}</pre>
         </div>
-       
+
         <h4>AI策略信息：</h4>
         <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, userSelect: 'text' }}>
           <p><strong>策略名称：</strong>{data?.ai_type?.name}</p>
@@ -71,23 +83,12 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
           <p><strong>获取期：</strong>{data?.ai_type?.config?.get_period}</p>
         </div>
 
-        <h4>提示词：
-          <Button 
-            icon={<CopyOutlined />} 
-            type="link" 
-            onClick={() => copyToClipboard(data?.all_prompt || '')}
-          >
-            复制
-          </Button>
-        </h4>
-        <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 300, overflow: 'auto', userSelect: 'text' }}>
-          {data?.all_prompt}
-        </div>
-        
+
+
         <h4>预测结果：
-          <Button 
-            icon={<CopyOutlined />} 
-            type="link" 
+          <Button
+            icon={<CopyOutlined />}
+            type="link"
             onClick={() => copyToClipboard(data?.result || '')}
           >
             复制
@@ -97,7 +98,7 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
           {data?.result}
         </div>
 
-       
+
       </div>
     </Modal>
   );
@@ -144,7 +145,7 @@ const Log = () => {
       const response = await axiosServices.get('/client/lot/get_ai_log_list', {
         params
       });
-      
+
       if (response.data && response.data.code === 1) {
         setData(response.data.data.data || []);
         setTotal(response.data.data.total || 0);
@@ -159,12 +160,12 @@ const Log = () => {
   useEffect(() => {
     const values = form.getFieldsValue();
     const filters = { ...values };
-    
+
     // 转换日期为时间戳
     if (filters.guess_time && dayjs.isDayjs(filters.guess_time)) {
       filters.guess_time = Math.floor(filters.guess_time.valueOf() / 1000);
     }
-    
+
     fetchData(currentPage, pageSize, filters);
   }, [currentPage, pageSize]);
 
@@ -182,12 +183,12 @@ const Log = () => {
     setCurrentPage(1);
     const values = form.getFieldsValue();
     const filters = { ...values };
-    
+
     // 转换日期为时间戳
     if (filters.guess_time && dayjs.isDayjs(filters.guess_time)) {
       filters.guess_time = Math.floor(filters.guess_time.valueOf() / 1000);
     }
-    
+
     fetchData(1, pageSize, filters);
   };
 
@@ -205,14 +206,14 @@ const Log = () => {
   const renderColumnWithCopy = (value: any, render?: (value: any) => React.ReactNode) => {
     const displayValue = render ? render(value) : value;
     if (!value) return null;
-    
+
     return (
-      <div 
+      <div
         onClick={(e) => {
           e.stopPropagation();
           copyToClipboard(String(value));
         }}
-        style={{ 
+        style={{
           cursor: 'pointer',
           transition: 'background 0.3s',
           padding: '4px 8px',
@@ -289,8 +290,8 @@ const Log = () => {
       title: "操作",
       key: "action",
       render: (_: any, record: any) => (
-        <Button 
-          type="link" 
+        <Button
+          type="link"
           icon={<EyeOutlined />}
           onClick={() => showDetail(record)}
         >
@@ -305,7 +306,7 @@ const Log = () => {
       <div className="ai-log-container" style={{ userSelect: 'text' }}>
         <div className="ai-log-header">
           <h1 className="ai-log-title">AI预测日志</h1>
-          
+
         </div>
 
         <Card className="ai-log-search" style={{ marginBottom: 16 ,marginTop:20}}>
@@ -318,10 +319,10 @@ const Log = () => {
             <Form.Item name="ai_type_id" label="策略ID">
               <Input placeholder="请输入策略ID" style={{ width: 350, backgroundColor: 'white' }} />
             </Form.Item>
-            
+
             <Form.Item name="ai_type" label="策略类型">
-              <Select 
-                placeholder="请选择策略类型" 
+              <Select
+                placeholder="请选择策略类型"
                 style={{ width: 200, backgroundColor: 'white' }}
                 allowClear
               >
@@ -337,9 +338,9 @@ const Log = () => {
             </Form.Item>
 
             <Form.Item name="guess_time" label="预测时间">
-              <DatePicker 
-                showTime 
-                style={{ width: 200, backgroundColor: 'white' }} 
+              <DatePicker
+                showTime
+                style={{ width: 200, backgroundColor: 'white' }}
                 format="YYYY-MM-DD HH:mm:ss"
                 onChange={(date) => {
                   if (date) {
@@ -401,4 +402,4 @@ const Log = () => {
   );
 };
 
-export default Log; 
+export default Log;
