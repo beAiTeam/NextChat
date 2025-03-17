@@ -3,6 +3,7 @@
 import { Card, Select, Space, Spin } from "antd";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useState } from "react";
+import axiosServices from "../utils/my-axios";
 import {
   checkCurrentPeriodMatch,
   checkThreePeriodsMatch,
@@ -32,11 +33,13 @@ interface PredictItem {
 const PredictChart = () => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<PredictItem[]>([]);
+  const [weeklyData, setWeeklyData] = useState<PredictItem[]>([]);
   const [pageSize, setPageSize] = useState(100);
   const [winType, setWinType] = useState<"current" | "two" | "any">("current");
   const [chartData, setChartData] = useState<any[]>([]);
   const [winLoseData, setWinLoseData] = useState<any[]>([]);
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
+  const [weeklyChartData, setWeeklyChartData] = useState<any[]>([]);
   const [guessType, setGuessType] = useState<string>("ai_5_normal");
 
   // 检查当期是否中奖
@@ -114,6 +117,100 @@ const PredictChart = () => {
     return data;
   };
 
+  // 获取最近一周的数据
+  const fetchWeeklyData = async () => {
+    setLoading(true);
+    try {
+      // 计算最近7天的开始时间
+      const startDate = new Date();
+      startDate.setDate(startDate.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      
+      const endDate = new Date();
+      endDate.setHours(23, 59, 59, 999);
+      
+      const params = {
+        page: 1,
+        page_size: 2016, // 直接获取2016条数据
+        guess_type: guessType,
+        start_time: Math.floor(startDate.getTime() / 1000),
+        end_time: Math.floor(endDate.getTime() / 1000)
+      };
+      
+      const response = await axiosServices.get(
+        "/client/lot/get_ai_guess_list",
+        { params }
+      );
+      
+      const newData = response.data.data.data;
+      setWeeklyData(newData);
+      generateWeeklyChartData(newData);
+    } catch (error) {
+      console.error("获取周数据失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 生成最近一周每日胜率数据
+  const generateWeeklyChartData = (items: PredictItem[]) => {
+    // 获取最近7天的日期
+    const dates = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      dates.push(date);
+    }
+
+    // 按日期分组数据
+    const dailyData = dates.map(date => {
+      const dateStr = date.toISOString().split('T')[0];
+      const startOfDay = new Date(dateStr);
+      const endOfDay = new Date(dateStr);
+      endOfDay.setHours(23, 59, 59, 999);
+
+      // 根据日期筛选当天数据
+      const dayItems = items.filter(item => {
+        const itemDate = new Date(item.guess_time * 1000);
+        return itemDate >= startOfDay && itemDate <= endOfDay;
+      });
+
+      // 按时间段分组
+      const dayTimeItems = dayItems.filter(item => {
+        const hour = new Date(item.guess_time * 1000).getHours();
+        return hour >= 6 && hour < 18; // 6:00 - 18:00
+      });
+
+      const nightTimeItems = dayItems.filter(item => {
+        const hour = new Date(item.guess_time * 1000).getHours();
+        return hour < 6 || hour >= 18; // 18:00 - 6:00
+      });
+
+      // 计算不同时间段的胜率
+      const allDayWinRate = calculateWinRate(dayItems, winType);
+      const dayTimeWinRate = calculateWinRate(dayTimeItems, winType);
+      const nightTimeWinRate = calculateWinRate(nightTimeItems, winType);
+      
+      return {
+        date: `${date.getMonth() + 1}/${date.getDate()}`,
+        allDay: {
+          winRate: Number(allDayWinRate.toFixed(2)),
+          count: dayItems.length
+        },
+        dayTime: {
+          winRate: Number(dayTimeWinRate.toFixed(2)),
+          count: dayTimeItems.length
+        },
+        nightTime: {
+          winRate: Number(nightTimeWinRate.toFixed(2)),
+          count: nightTimeItems.length
+        }
+      };
+    });
+
+    setWeeklyChartData(dailyData);
+  };
+
   // 处理数据并生成图表数据
   const processChartData = (items: PredictItem[], currentWinType: "current" | "two" | "any") => {
     // 按时间排序
@@ -177,7 +274,7 @@ const PredictChart = () => {
     });
 
     // 生成热力图数据
-    const heatmapData = generateHeatmapData(items, currentWinType);
+    const heatmapData = generateHeatmapData(sortedItems, currentWinType);
 
     setChartData(chartData);
     setWinLoseData(winLoseData);
@@ -208,11 +305,127 @@ const PredictChart = () => {
   const handleWinTypeChange = (newWinType: "current" | "two" | "any") => {
     setWinType(newWinType);
     processChartData(data, newWinType);
+    if (weeklyData.length > 0) {
+      generateWeeklyChartData(weeklyData);
+    }
   };
+
+  const handleGuessTypeChange = (value: string) => {
+    setGuessType(value);
+  };
+
+  useEffect(() => {
+    fetchWeeklyData();
+  }, [guessType, winType]);
 
   useEffect(() => {
     processChartData(data, winType);
   }, [winType]);
+
+  const weeklyOption = {
+    title: {
+      text: '最近一周每日胜率',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis' as const,
+      formatter: function(params: any) {
+        let result = params[0].name + '<br/>';
+        params.forEach((param: any) => {
+          const data = param.data;
+          const color = param.color;
+          const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>`;
+          if (param.seriesIndex === 0) {
+            result += `${marker}全天: ${data}%（样本: ${param.data.count}）<br/>`;
+          } else if (param.seriesIndex === 1) {
+            result += `${marker}白天: ${data}%（样本: ${param.data.count}）<br/>`;
+          } else if (param.seriesIndex === 2) {
+            result += `${marker}晚上: ${data}%（样本: ${param.data.count}）<br/>`;
+          }
+        });
+        return result;
+      }
+    },
+    legend: {
+      data: ['全天', '白天', '晚上'],
+      top: '30px'
+    },
+    grid: {
+      top: '80px',
+      bottom: '10%',
+      left: '10%',
+      right: '10%'
+    },
+    xAxis: {
+      type: 'category' as const,
+      data: weeklyChartData.map(item => item.date),
+      axisLabel: {
+        rotate: 0
+      }
+    },
+    yAxis: {
+      type: 'value' as const,
+      min: winType === "any" ? 50 : winType === "two" ? 40 : 0,
+      max: 100,
+      name: '胜率(%)',
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed' as const
+        }
+      }
+    },
+    series: [
+      {
+        name: '全天',
+        type: 'bar' as const,
+        data: weeklyChartData.map(item => ({
+          value: item.allDay.winRate,
+          count: item.allDay.count
+        })),
+        itemStyle: {
+          color: '#2593fc'
+        },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '{c}%'
+        }
+      },
+      {
+        name: '白天',
+        type: 'bar' as const,
+        data: weeklyChartData.map(item => ({
+          value: item.dayTime.winRate,
+          count: item.dayTime.count
+        })),
+        itemStyle: {
+          color: '#52c41a'
+        },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '{c}%'
+        }
+      },
+      {
+        name: '晚上',
+        type: 'bar' as const,
+        data: weeklyChartData.map(item => ({
+          value: item.nightTime.winRate,
+          count: item.nightTime.count
+        })),
+        itemStyle: {
+          color: '#ff4d4f'
+        },
+        label: {
+          show: true,
+          position: 'top',
+          formatter: '{c}%'
+        }
+      }
+    ]
+  };
 
   const winRateOption = {
     title: {
@@ -235,7 +448,13 @@ const PredictChart = () => {
       type: 'value' as const,
       min: winType === "any" ? 50 : winType === "two" ? 40 : 0,
       max: 100,
-      name: '胜率(%)'
+      name: '胜率(%)',
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed' as const
+        }
+      }
     },
     series: [{
       data: chartData.map(item => item.winRate),
@@ -248,6 +467,21 @@ const PredictChart = () => {
       },
       lineStyle: {
         width: 2
+      },
+      markLine: {
+        silent: true,
+        symbol: 'none',
+       
+        data: [
+          {
+            yAxis: 70,
+            lineStyle: {
+              color: '#ff4d4f',
+              width: 2,
+              type: 'solid' as const
+            }
+          }
+        ]
       }
     }]
   };
@@ -376,7 +610,7 @@ const PredictChart = () => {
             <span>预测策略：</span>
             <Select
               value={guessType}
-              onChange={setGuessType}
+              onChange={handleGuessTypeChange}
               style={{ width: 150 }}
               options={[
                 { value: "ai_5_normal", label: "AI-5" },
@@ -392,10 +626,23 @@ const PredictChart = () => {
             defaultWinType={winType}
           />
 
+          
+
           <Card>
             <Spin spinning={loading}>
               <ReactECharts
                 option={winRateOption}
+                style={{ height: '400px' }}
+                notMerge={true}
+                opts={{ renderer: 'svg' }}
+              />
+            </Spin>
+          </Card>
+
+          <Card title="最近一周每日胜率">
+            <Spin spinning={loading}>
+              <ReactECharts
+                option={weeklyOption}
                 style={{ height: '400px' }}
                 notMerge={true}
                 opts={{ renderer: 'svg' }}
