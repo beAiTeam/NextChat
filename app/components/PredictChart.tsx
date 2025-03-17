@@ -233,7 +233,7 @@ const PredictChart = () => {
     },
     yAxis: {
       type: 'value' as const,
-      min: 0,
+      min: winType === "any" ? 50 : winType === "two" ? 40 : 0,
       max: 100,
       name: '胜率(%)'
     },
@@ -288,7 +288,7 @@ const PredictChart = () => {
     series: [{
       data: winLoseData.map(item => item.value),
       type: 'line' as const,
-      step: 'middle',
+      step: 'middle' as const,
       symbol: 'circle',
       symbolSize: 8,
       itemStyle: {
@@ -313,7 +313,7 @@ const PredictChart = () => {
       left: 'center'
     },
     tooltip: {
-      position: 'top',
+      position: 'top' as const,
       formatter: function (params: any) {
         return `时间: ${params.data[0]}时 第${params.data[1] + 1}期<br/>状态: ${params.data[2] ? '中奖' : '未中奖'}`;
       }
@@ -325,14 +325,14 @@ const PredictChart = () => {
       right: '10%'
     },
     xAxis: {
-      type: 'category',
+      type: 'category' as const,
       data: Array.from({ length: 24 }, (_, i) => `${i}时`),
       splitArea: {
         show: true
       }
     },
     yAxis: {
-      type: 'category',
+      type: 'category' as const,
       data: Array.from({ length: 12 }, (_, i) => `${i + 1}期`),
       splitArea: {
         show: true
@@ -342,7 +342,7 @@ const PredictChart = () => {
       min: 0,
       max: 1,
       calculable: false,
-      orient: 'horizontal',
+      orient: 'horizontal' as const,
       left: 'center',
       bottom: '0%',
       inRange: {
@@ -354,7 +354,7 @@ const PredictChart = () => {
     },
     series: [{
       name: '开奖状态',
-      type: 'heatmap',
+      type: 'heatmap' as const,
       data: heatmapData,
       label: {
         show: false

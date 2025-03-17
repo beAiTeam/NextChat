@@ -56,11 +56,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
 
     // 检查当期是否中奖
     const checkCurrentPeriodWin = (record: PredictItem): boolean => {
-      if (
-        !record.guess_result ||
-        !record.ext_result ||
-        record.ext_result.length === 0
-      ) {
+      if (!record.guess_result || !record.ext_result) {
         return false;
       }
 
@@ -74,11 +70,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
 
     // 检查两期内是否中奖
     const checkTwoPeriodsWin = (record: PredictItem): boolean => {
-      if (
-        !record.guess_result ||
-        !record.ext_result ||
-        record.ext_result.length === 0
-      ) {
+      if (!record.guess_result || !record.ext_result) {
         return false;
       }
 
@@ -88,23 +80,29 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
 
     // 检查三期内是否中奖
     const checkThreePeriodsWin = (record: PredictItem): boolean => {
-      if (
-        !record.guess_result ||
-        !record.ext_result ||
-        record.ext_result.length === 0
-      ) {
+      if (!record.guess_result || !record.ext_result) {
         return false;
       }
 
       const prediction = formatGuessResult(record.guess_result);
       return checkThreePeriodsMatch(prediction, record.ext_result);
-    }; 
+    };
 
     // 计算胜率
     const calculateWinRate = (items: PredictItem[]): number => {
-      const validItems = items.filter(
-        (item) => item.ext_result && item.ext_result.length > 0,
-      );
+      // 根据不同的winType筛选有效数据
+      const validItems = items.filter((item) => {
+        if (!item.ext_result || !item.guess_result) return false;
+        
+        if (winType === "current") {
+          return item.ext_result.length > 0;
+        } else if (winType === "two") {
+          return item.ext_result.length >= 2;
+        } else { // winType === "any" (三期)
+          return item.ext_result.length >= 3;
+        }
+      });
+      
       if (validItems.length === 0) return 0;
 
       const winCount = validItems.filter((item) => {
@@ -185,7 +183,12 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
             {loading ? (
               <Spin size="small" />
             ) : (
-              `${calculateWinRate(data).toFixed(2)}%`
+              `${calculateWinRate(data).toFixed(2)}%（有效数据：${data.filter(item => {
+                if (!item.ext_result || !item.guess_result) return false;
+                if (winType === "current") return item.ext_result.length > 0;
+                if (winType === "two") return item.ext_result.length >= 2;
+                return item.ext_result.length >= 3;
+              }).length}条）`
             )}
           </span>
         </Space>
