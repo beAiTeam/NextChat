@@ -1,4 +1,5 @@
-import { Radio, Select, Space, Spin } from "antd";
+import { DatePicker, Radio, Select, Space, Spin } from "antd";
+import { Dayjs } from "dayjs";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import {
@@ -9,6 +10,8 @@ import {
   formatGuessResult,
   GuessResult,
 } from "../utils/predict-utils";
+
+const { RangePicker } = DatePicker;
 
 interface PredictItem {
   _id: string;
@@ -28,12 +31,14 @@ interface PredictStatsProps {
   guess_type: string;
   onDataChange?: (data: PredictItem[]) => void;
   onWinTypeChange?: (winType: "current" | "two" | "any") => void;
+  onTimeRangeChange?: (timeRange: [Dayjs | null, Dayjs | null]) => void;
   defaultPageSize?: number;
   defaultWinType?: "current" | "two" | "any";
 }
 
 export interface PredictStatsRef {
   refresh: () => void;
+  getTimeRange: () => [Dayjs | null, Dayjs | null];
 }
 
 const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
@@ -42,6 +47,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       guess_type,
       onDataChange,
       onWinTypeChange,
+      onTimeRangeChange,
       defaultPageSize = 100,
       defaultWinType = "current",
     },
@@ -53,6 +59,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
     const [winType, setWinType] = useState<"current" | "two" | "any">(
       defaultWinType,
     );
+    const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
 
     // 检查当期是否中奖
     const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -117,14 +124,22 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
     const fetchData = async (size: number) => {
       setLoading(true);
       try {
+        const params: any = {
+          page: 1,
+          page_size: size,
+          guess_type: guess_type,
+        };
+
+        // 添加时间范围参数
+        if (timeRange[0] && timeRange[1]) {
+          params.start_time = Math.floor(timeRange[0].valueOf()/1000);
+          params.end_time = Math.floor(timeRange[1].valueOf()/1000);
+        }
+
         const response = await axiosServices.get(
           "/client/lot/get_ai_guess_list",
           {
-            params: {
-              page: 1,
-              page_size: size,
-              guess_type: guess_type,
-            },
+            params,
           },
         );
         const newData = response.data.data.data;
@@ -139,11 +154,12 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
 
     useImperativeHandle(ref, () => ({
       refresh: () => fetchData(pageSize),
+      getTimeRange: () => timeRange,
     }));
 
     useEffect(() => {
       fetchData(pageSize);
-    }, [pageSize]);
+    }, [pageSize, timeRange]);
 
     // 监听guess_type变化，重新获取数据
     useEffect(() => {
@@ -154,6 +170,17 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       const newWinType = e.target.value;
       setWinType(newWinType);
       onWinTypeChange?.(newWinType);
+    };
+
+    // 处理时间范围变化
+    const handleTimeRangeChange = (dates: any) => {
+      if (dates) {
+        setTimeRange([dates[0], dates[1]]);
+        onTimeRangeChange?.([dates[0], dates[1]]);
+      } else {
+        setTimeRange([null, null]);
+        onTimeRangeChange?.([null, null]);
+      }
     };
 
     return (
@@ -170,16 +197,26 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
               { value: 200, label: "200条" },
               { value: 500, label: "500条" },
               { value: 1000, label: "1000条" },
+              { value: 2000, label: "2000条" },
+              { value: 5000, label: "5000条" },
             ]}
           />
-          <span>胜率类型：</span>
+          
           <Radio.Group value={winType} onChange={handleWinTypeChange}>
             <Radio.Button value="current">当期胜率</Radio.Button>
             <Radio.Button value="two">两期胜率</Radio.Button>
             <Radio.Button value="any">三期胜率</Radio.Button>
           </Radio.Group>
+
+          <RangePicker
+            showTime={{ format: 'HH:mm' }}
+            format="YYYY-MM-DD HH:mm"
+            onChange={handleTimeRangeChange}
+            style={{ minWidth: '300px' }}
+          />
+          
           <span>
-            {pageSize}条数据总胜率：
+            {pageSize}条胜率：
             {loading ? (
               <Spin size="small" />
             ) : (

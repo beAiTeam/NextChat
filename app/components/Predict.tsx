@@ -4,9 +4,10 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   InfoCircleOutlined,
-  ReloadOutlined,
+  ReloadOutlined
 } from "@ant-design/icons";
 import { Button, Card, Col, Modal, Row, Table, Tag, Tooltip, Typography } from "antd";
+import { Dayjs } from "dayjs";
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
@@ -71,6 +72,7 @@ const Predict = ({ guess_type }: PredictProps) => {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<PredictItem[]>([]);
   const [total, setTotal] = useState(0);
+  const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [currentAiType, setCurrentAiType] = useState<AiTypeConfig | null>(null);
   const [isDrawResultModalVisible, setIsDrawResultModalVisible] =
@@ -89,6 +91,12 @@ const Predict = ({ guess_type }: PredictProps) => {
         guess_type: guess_type,
       };
 
+      // 添加时间范围参数
+      if (timeRange[0] && timeRange[1]) {
+        params.start_time = Math.floor(timeRange[0].valueOf()/1000);
+        params.end_time = Math.floor(timeRange[1].valueOf()/1000);
+      }
+
       const response = await axiosServices.get(
         "/client/lot/get_ai_guess_list",
         {
@@ -106,12 +114,18 @@ const Predict = ({ guess_type }: PredictProps) => {
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize]);
+  }, [currentPage, pageSize, timeRange]);
 
   // 当pageSize变化时保存到localStorage
   useEffect(() => {
     localStorage.setItem("predict_page_size", pageSize.toString());
   }, [pageSize]);
+
+  // 处理时间范围变化
+  const handleTimeRangeChange = (newTimeRange: [Dayjs | null, Dayjs | null]) => {
+    setTimeRange(newTimeRange);
+    setCurrentPage(1); // 重置页码
+  };
 
   // 添加刷新函数
   const handleRefresh = () => {
@@ -528,7 +542,7 @@ const Predict = ({ guess_type }: PredictProps) => {
     <MainLayout>
       <div className="predict-container">
         <div className="predict-header">
-          <h1 className="predict-title">[{guess_type}]-策略</h1>
+         
           <div className="select-ai-type"></div>
           <div className="predict-controls">
          <div style={{marginRight: '10px',height: '30px'}}>
@@ -539,6 +553,7 @@ const Predict = ({ guess_type }: PredictProps) => {
           defaultWinType="current"
           onDataChange={(data) => console.log('数据更新:', data)}
           onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
+          onTimeRangeChange={handleTimeRangeChange}
          />
          </div>
             <Button
@@ -580,6 +595,8 @@ const Predict = ({ guess_type }: PredictProps) => {
                 "200",
                 "500",
                 "1000",
+                "2000",
+                "5000",
               ],
               showTotal: (total: number) => `共 ${total} 条数据`,
             }}

@@ -22,6 +22,10 @@
       display: flex;
       gap: 16px;
       align-items: center;
+      
+      .predict-time-picker {
+        min-width: 300px;
+      }
     }
   }
 
