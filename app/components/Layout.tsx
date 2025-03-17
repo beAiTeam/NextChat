@@ -31,6 +31,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'AI预测Plus',
     },
     {
+      key: '/predict-gemini',
+      icon: <RocketOutlined />,
+      label: 'AI预测 Gemini',
+    },
+    {
       key: '/predict-chart',
       icon: <LineChartOutlined />,
       label: 'AI预测图表',
