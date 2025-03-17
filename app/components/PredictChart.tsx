@@ -89,16 +89,16 @@ const PredictChart = () => {
   const generateHeatmapData = (items: PredictItem[], currentWinType: "current" | "two" | "any") => {
     const hours = Array.from({ length: 24 }, (_, i) => i);
     const periods = Array.from({ length: 12 }, (_, i) => i + 1);
-    
+
     // 初始化数据
     const data: [number, number, number][] = [];
-    
+
     items.forEach(item => {
       const date = new Date(item.guess_time * 1000);
       const hour = date.getHours();
       const minute = date.getMinutes();
       const period = Math.floor(minute / 5) + 1;
-      
+
       let isWin = false;
       if (currentWinType === "current") {
         isWin = checkCurrentPeriodWin(item);
@@ -107,10 +107,10 @@ const PredictChart = () => {
       } else {
         isWin = checkThreePeriodsWin(item);
       }
-      
+
       data.push([hour, period - 1, isWin ? 1 : 0]);
     });
-    
+
     return data;
   };
 
@@ -381,10 +381,11 @@ const PredictChart = () => {
               options={[
                 { value: "ai_5_normal", label: "AI-5" },
                 { value: "ai_5_plus", label: "AI-5 Plus" },
+                { value: "ai_5_gemini", label: "AI-5 Gemini" },
               ]}
             />
           </Space>
-          <PredictStats 
+          <PredictStats
             guess_type={guessType}
             onDataChange={handleDataChange}
             onWinTypeChange={handleWinTypeChange}
