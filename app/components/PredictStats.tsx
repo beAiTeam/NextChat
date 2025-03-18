@@ -188,18 +188,34 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
         <Space>
           <span>数据量：</span>
           <Select
-            value={pageSize}
-            onChange={setPageSize}
+            value={String(pageSize)}
+            style={{width: 90}}
+            onChange={(value: string) => {
+              const size = parseInt(value);
+              if (!isNaN(size) && size > 0) {
+                setPageSize(size);
+              }
+            }}
             options={[
-              { value: 10, label: "10条" },
-              { value: 50, label: "50条" },
-              { value: 100, label: "100条" },
-              { value: 200, label: "200条" },
-              { value: 500, label: "500条" },
-              { value: 1000, label: "1000条" },
-              { value: 2000, label: "2000条" },
-              { value: 5000, label: "5000条" },
+              { value: "10", label: "10条" },
+              { value: "50", label: "50条" },
+              { value: "100", label: "100条" },
+              { value: "200", label: "200条" },
+              { value: "500", label: "500条" },
+              { value: "1000", label: "1000条" },
+              { value: "2000", label: "2000条" },
+              { value: "5000", label: "5000条" },
             ]}
+            showSearch
+            allowClear={false}
+            placeholder="请输入数据量"
+            filterOption={false}
+            onSearch={(value: string) => {
+              const size = parseInt(value);
+              if (!isNaN(size) && size > 0) {
+                setPageSize(size);
+              }
+            }}
           />
           
           <Radio.Group value={winType} onChange={handleWinTypeChange}>
