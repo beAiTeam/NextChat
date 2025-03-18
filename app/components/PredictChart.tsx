@@ -41,6 +41,7 @@ const PredictChart = () => {
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
   const [weeklyChartData, setWeeklyChartData] = useState<any[]>([]);
   const [guessType, setGuessType] = useState<string>("ai_5_normal");
+  const [dayTimeRange, setDayTimeRange] = useState<[number, number]>([6, 18]);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -178,12 +179,12 @@ const PredictChart = () => {
       // 按时间段分组
       const dayTimeItems = dayItems.filter(item => {
         const hour = new Date(item.guess_time * 1000).getHours();
-        return hour >= 6 && hour < 18; // 6:00 - 18:00
+        return hour >= dayTimeRange[0] && hour < dayTimeRange[1]; // 白天时间范围
       });
 
       const nightTimeItems = dayItems.filter(item => {
         const hour = new Date(item.guess_time * 1000).getHours();
-        return hour < 6 || hour >= 18; // 18:00 - 6:00
+        return hour < dayTimeRange[0] || hour >= dayTimeRange[1]; // 晚上时间范围
       });
 
       // 计算不同时间段的胜率
@@ -314,6 +315,19 @@ const PredictChart = () => {
     setGuessType(value);
   };
 
+  const handleDayTimeRangeChange = (value: string) => {
+    const ranges: Record<string, [number, number]> = {
+      "6-18": [6, 18],
+      "7-19": [7, 19],
+      "8-20": [8, 20],
+      "9-21": [9, 21]
+    };
+    setDayTimeRange(ranges[value]);
+    if (weeklyData.length > 0) {
+      generateWeeklyChartData(weeklyData);
+    }
+  };
+
   useEffect(() => {
     fetchWeeklyData();
   }, [guessType, winType]);
@@ -336,18 +350,18 @@ const PredictChart = () => {
           const color = param.color;
           const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>`;
           if (param.seriesIndex === 0) {
-            result += `${marker}全天: ${data}%（样本: ${param.data.count}）<br/>`;
+            result += `${marker}全天: ${data.value}%（样本: ${data.count}）<br/>`;
           } else if (param.seriesIndex === 1) {
-            result += `${marker}白天: ${data}%（样本: ${param.data.count}）<br/>`;
+            result += `${marker}白天(${dayTimeRange[0]}:00-${dayTimeRange[1]}:00): ${data.value}%（样本: ${data.count}）<br/>`;
           } else if (param.seriesIndex === 2) {
-            result += `${marker}晚上: ${data}%（样本: ${param.data.count}）<br/>`;
+            result += `${marker}晚上(${dayTimeRange[1]}:00-${dayTimeRange[0]}:00): ${data.value}%（样本: ${data.count}）<br/>`;
           }
         });
         return result;
       }
     },
     legend: {
-      data: ['全天', '白天', '晚上'],
+      data: ['全天', `白天(${dayTimeRange[0]}:00-${dayTimeRange[1]}:00)`, `晚上(${dayTimeRange[1]}:00-${dayTimeRange[0]}:00)`],
       top: '30px'
     },
     grid: {
@@ -388,12 +402,12 @@ const PredictChart = () => {
         },
         label: {
           show: true,
-          position: 'top',
+          position: 'top' as const,
           formatter: '{c}%'
         }
       },
       {
-        name: '白天',
+        name: `白天(${dayTimeRange[0]}:00-${dayTimeRange[1]}:00)`,
         type: 'bar' as const,
         data: weeklyChartData.map(item => ({
           value: item.dayTime.winRate,
@@ -404,12 +418,12 @@ const PredictChart = () => {
         },
         label: {
           show: true,
-          position: 'top',
+          position: 'top' as const,
           formatter: '{c}%'
         }
       },
       {
-        name: '晚上',
+        name: `晚上(${dayTimeRange[1]}:00-${dayTimeRange[0]}:00)`,
         type: 'bar' as const,
         data: weeklyChartData.map(item => ({
           value: item.nightTime.winRate,
@@ -420,7 +434,7 @@ const PredictChart = () => {
         },
         label: {
           show: true,
-          position: 'top',
+          position: 'top' as const,
           formatter: '{c}%'
         }
       }
@@ -626,7 +640,20 @@ const PredictChart = () => {
             defaultWinType={winType}
           />
 
-          
+          <Space>
+            <span>白天时间范围：</span>
+            <Select
+              value={`${dayTimeRange[0]}-${dayTimeRange[1]}`}
+              onChange={handleDayTimeRangeChange}
+              style={{ width: 120 }}
+              options={[
+                { value: "6-18", label: "白天 6-18点" },
+                { value: "7-19", label: "白天 7-19点" },
+                { value: "8-20", label: "白天 8-20点" },
+                { value: "9-21", label: "白天 9-21点" },
+              ]}
+            />
+          </Space>
 
           <Card>
             <Spin spinning={loading}>
@@ -639,7 +666,22 @@ const PredictChart = () => {
             </Spin>
           </Card>
 
-          <Card title="最近一周每日胜率">
+          <Card title={
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <span>最近一周每日胜率</span>
+              <Select
+                value={`${dayTimeRange[0]}-${dayTimeRange[1]}`}
+                onChange={handleDayTimeRangeChange}
+                style={{ width: 120 }}
+                options={[
+                  { value: "6-18", label: "白天 6-18点" },
+                  { value: "7-19", label: "白天 7-19点" },
+                  { value: "8-20", label: "白天 8-20点" },
+                  { value: "9-21", label: "白天 9-21点" },
+                ]}
+              />
+            </div>
+          }>
             <Spin spinning={loading}>
               <ReactECharts
                 option={weeklyOption}

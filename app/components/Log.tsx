@@ -18,7 +18,7 @@ interface LogFormValues {
   ai_type_id?: string;
   ai_type?: string;
   guess_period?: string;
-  guess_time?: dayjs.Dayjs;
+  guess_time?: number | dayjs.Dayjs;
 }
 
 interface DetailModalProps {
@@ -36,6 +36,16 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
     });
   };
 
+  const formatAllPrompt = (allPrompt: any): string => {
+    if (typeof allPrompt === 'string') {
+      return allPrompt;
+    }
+    if (typeof allPrompt === 'object') {
+      return JSON.stringify(allPrompt, null, 2);
+    }
+    return '';
+  };
+
   return (
     <Modal
       title="预测详情"
@@ -49,13 +59,13 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
           <Button
               icon={<CopyOutlined />}
               type="link"
-              onClick={() => copyToClipboard(data?.all_prompt || '')}
+              onClick={() => copyToClipboard(formatAllPrompt(data?.all_prompt))}
           >
             复制
           </Button>
         </h4>
         <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 300, overflow: 'auto', userSelect: 'text' }}>
-          {data?.all_prompt}
+          {formatAllPrompt(data?.all_prompt)}
         </div>
       <h4>AI策略完整配置：
           <Button
@@ -135,10 +145,14 @@ const Log = () => {
         ...filters
       };
 
-      // 移除空值
+      // 移除空值并处理日期
       Object.keys(params).forEach(key => {
         if (params[key] === undefined || params[key] === null || params[key] === '') {
           delete params[key];
+        }
+        // 转换日期为时间戳
+        if (key === 'guess_time' && dayjs.isDayjs(params[key])) {
+          params[key] = Math.floor(params[key].valueOf() / 1000);
         }
       });
 
@@ -159,14 +173,7 @@ const Log = () => {
 
   useEffect(() => {
     const values = form.getFieldsValue();
-    const filters = { ...values };
-
-    // 转换日期为时间戳
-    if (filters.guess_time && dayjs.isDayjs(filters.guess_time)) {
-      filters.guess_time = Math.floor(filters.guess_time.valueOf() / 1000);
-    }
-
-    fetchData(currentPage, pageSize, filters);
+    fetchData(currentPage, pageSize, values);
   }, [currentPage, pageSize]);
 
   useEffect(() => {
@@ -182,14 +189,7 @@ const Log = () => {
   const handleSearch = () => {
     setCurrentPage(1);
     const values = form.getFieldsValue();
-    const filters = { ...values };
-
-    // 转换日期为时间戳
-    if (filters.guess_time && dayjs.isDayjs(filters.guess_time)) {
-      filters.guess_time = Math.floor(filters.guess_time.valueOf() / 1000);
-    }
-
-    fetchData(1, pageSize, filters);
+    fetchData(1, pageSize, values);
   };
 
   const handleReset = () => {
@@ -278,7 +278,24 @@ const Log = () => {
       key: "result",
       width: 200,
       ellipsis: true,
-      render: (text: string) => renderColumnWithCopy(text)
+      render: (result: any) => {
+        if (!result) return null;
+        if (typeof result === 'string') {
+          return renderColumnWithCopy(result);
+        }
+        // 如果是对象格式，将其转换为字符串显示
+        if (typeof result === 'object') {
+          const numbers = [
+            result.top_1_number,
+            result.top_2_number,
+            result.top_3_number,
+            result.top_4_number,
+            result.top_5_number
+          ].filter(Boolean).join('');
+          return renderColumnWithCopy(numbers);
+        }
+        return null;
+      }
     },
     {
       title: "创建时间",
