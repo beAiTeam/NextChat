@@ -616,6 +616,7 @@ const PredictChart = () => {
                     { value: "ai_5_normal", label: "AI-5" },
                     { value: "ai_5_plus", label: "AI-5 Plus" },
                     { value: "ai_5_gemini", label: "AI-5 Gemini" },
+                    { value: "ai_5_gemini_plus", label: "AI-5 Gemini Plus" },
                   ]}
               />
             </Space>
