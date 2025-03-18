@@ -7,6 +7,8 @@ export enum LotAiGuessModel {
 export enum LotAiGuessType {
   Ai5_Normal = "ai_5_normal",
   Ai5_Plus = "ai_5_plus",
+  Ai5_Gemini = "ai_5_gemini",
+  Ai5_Gemini_Plus = "ai_5_gemini_plus",
   Zlzdm = "zlzdm",
   Ylzhb = "ylzhb",
 }

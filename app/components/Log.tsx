@@ -46,6 +46,27 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
     return '';
   };
 
+  const formatResult = (result: any): string => {
+    if (!result) return '';
+    if (typeof result === 'string') {
+      return result;
+    }
+    if (typeof result === 'object') {
+      if (result.top_1_number !== undefined) {
+        const numbers = [
+          result.top_1_number,
+          result.top_2_number,
+          result.top_3_number,
+          result.top_4_number,
+          result.top_5_number
+        ].filter(Boolean).join('');
+        return numbers;
+      }
+      return JSON.stringify(result, null, 2);
+    }
+    return '';
+  };
+
   return (
     <Modal
       title="预测详情"
@@ -93,22 +114,18 @@ const DetailModal: React.FC<DetailModalProps> = ({ visible, data, onClose }) => 
           <p><strong>获取期：</strong>{data?.ai_type?.config?.get_period}</p>
         </div>
 
-
-
         <h4>预测结果：
           <Button
             icon={<CopyOutlined />}
             type="link"
-            onClick={() => copyToClipboard(data?.result || '')}
+            onClick={() => copyToClipboard(formatResult(data?.result))}
           >
             复制
           </Button>
         </h4>
         <div style={{ background: '#f5f5f5', padding: 16, marginBottom: 16, maxHeight: 100, overflow: 'auto', userSelect: 'text' }}>
-          {data?.result}
+          {formatResult(data?.result)}
         </div>
-
-
       </div>
     </Modal>
   );
@@ -343,10 +360,16 @@ const Log = () => {
                 style={{ width: 200, backgroundColor: 'white' }}
                 allowClear
               >
-                <Option value={LotAiGuessType.Ai5_Normal}>AI 5位数预测</Option>
+                {/* 遍历LotAiGuessType */}
+                {Object.values(LotAiGuessType).map((type) => (
+                  <Option key={type} value={type}>{type}</Option>
+                ))}
+                {/* <Option value={LotAiGuessType.Ai5_Normal}>AI 5位数预测</Option>
                 <Option value={LotAiGuessType.Ai5_Plus}>AI 5位数Plus预测</Option>
+                <Option value={LotAiGuessType.Ai5_Gemini}>AI 5位数Gemini预测</Option>
+                <Option value={LotAiGuessType.Ai5_Gemini_Plus}>AI 5位数Gemini Plus预测</Option>
                 <Option value={LotAiGuessType.Zlzdm}>智能指点迷</Option>
-                <Option value={LotAiGuessType.Ylzhb}>预料之后必</Option>
+                <Option value={LotAiGuessType.Ylzhb}>预料之后必</Option> */}
               </Select>
             </Form.Item>
 
