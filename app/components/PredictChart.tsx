@@ -41,7 +41,6 @@ const PredictChart = () => {
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
   const [weeklyChartData, setWeeklyChartData] = useState<any[]>([]);
   const [guessType, setGuessType] = useState<string>("ai_5_normal");
-  const [dayTimeRange, setDayTimeRange] = useState<[number, number]>([6, 18]);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -126,10 +125,10 @@ const PredictChart = () => {
       const startDate = new Date();
       startDate.setDate(startDate.getDate() - 6);
       startDate.setHours(0, 0, 0, 0);
-      
+
       const endDate = new Date();
       endDate.setHours(23, 59, 59, 999);
-      
+
       const params = {
         page: 1,
         page_size: 2016, // 直接获取2016条数据
@@ -137,12 +136,12 @@ const PredictChart = () => {
         start_time: Math.floor(startDate.getTime() / 1000),
         end_time: Math.floor(endDate.getTime() / 1000)
       };
-      
+
       const response = await axiosServices.get(
-        "/client/lot/get_ai_guess_list",
-        { params }
+          "/client/lot/get_ai_guess_list",
+          { params }
       );
-      
+
       const newData = response.data.data.data;
       setWeeklyData(newData);
       generateWeeklyChartData(newData);
@@ -179,19 +178,19 @@ const PredictChart = () => {
       // 按时间段分组
       const dayTimeItems = dayItems.filter(item => {
         const hour = new Date(item.guess_time * 1000).getHours();
-        return hour >= dayTimeRange[0] && hour < dayTimeRange[1]; // 白天时间范围
+        return hour >= 6 && hour < 18; // 6:00 - 18:00
       });
 
       const nightTimeItems = dayItems.filter(item => {
         const hour = new Date(item.guess_time * 1000).getHours();
-        return hour < dayTimeRange[0] || hour >= dayTimeRange[1]; // 晚上时间范围
+        return hour < 6 || hour >= 18; // 18:00 - 6:00
       });
 
       // 计算不同时间段的胜率
       const allDayWinRate = calculateWinRate(dayItems, winType);
       const dayTimeWinRate = calculateWinRate(dayTimeItems, winType);
       const nightTimeWinRate = calculateWinRate(nightTimeItems, winType);
-      
+
       return {
         date: `${date.getMonth() + 1}/${date.getDate()}`,
         allDay: {
@@ -285,7 +284,7 @@ const PredictChart = () => {
   // 计算胜率
   const calculateWinRate = (items: PredictItem[], currentWinType: "current" | "two" | "any"): number => {
     const validItems = items.filter(
-      (item) => item.ext_result && item.ext_result.length > 0,
+        (item) => item.ext_result && item.ext_result.length > 0,
     );
     if (validItems.length === 0) return 0;
 
@@ -315,19 +314,6 @@ const PredictChart = () => {
     setGuessType(value);
   };
 
-  const handleDayTimeRangeChange = (value: string) => {
-    const ranges: Record<string, [number, number]> = {
-      "6-18": [6, 18],
-      "7-19": [7, 19],
-      "8-20": [8, 20],
-      "9-21": [9, 21]
-    };
-    setDayTimeRange(ranges[value]);
-    if (weeklyData.length > 0) {
-      generateWeeklyChartData(weeklyData);
-    }
-  };
-
   useEffect(() => {
     fetchWeeklyData();
   }, [guessType, winType]);
@@ -350,18 +336,18 @@ const PredictChart = () => {
           const color = param.color;
           const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>`;
           if (param.seriesIndex === 0) {
-            result += `${marker}全天: ${data.value}%（样本: ${data.count}）<br/>`;
+            result += `${marker}全天: ${data}%（样本: ${param.data.count}）<br/>`;
           } else if (param.seriesIndex === 1) {
-            result += `${marker}白天(${dayTimeRange[0]}:00-${dayTimeRange[1]}:00): ${data.value}%（样本: ${data.count}）<br/>`;
+            result += `${marker}白天: ${data}%（样本: ${param.data.count}）<br/>`;
           } else if (param.seriesIndex === 2) {
-            result += `${marker}晚上(${dayTimeRange[1]}:00-${dayTimeRange[0]}:00): ${data.value}%（样本: ${data.count}）<br/>`;
+            result += `${marker}晚上: ${data}%（样本: ${param.data.count}）<br/>`;
           }
         });
         return result;
       }
     },
     legend: {
-      data: ['全天', `白天(${dayTimeRange[0]}:00-${dayTimeRange[1]}:00)`, `晚上(${dayTimeRange[1]}:00-${dayTimeRange[0]}:00)`],
+      data: ['全天', '白天', '晚上'],
       top: '30px'
     },
     grid: {
@@ -402,12 +388,12 @@ const PredictChart = () => {
         },
         label: {
           show: true,
-          position: 'top' as const,
+          position: 'top',
           formatter: '{c}%'
         }
       },
       {
-        name: `白天(${dayTimeRange[0]}:00-${dayTimeRange[1]}:00)`,
+        name: '白天',
         type: 'bar' as const,
         data: weeklyChartData.map(item => ({
           value: item.dayTime.winRate,
@@ -418,12 +404,12 @@ const PredictChart = () => {
         },
         label: {
           show: true,
-          position: 'top' as const,
+          position: 'top',
           formatter: '{c}%'
         }
       },
       {
-        name: `晚上(${dayTimeRange[1]}:00-${dayTimeRange[0]}:00)`,
+        name: '晚上',
         type: 'bar' as const,
         data: weeklyChartData.map(item => ({
           value: item.nightTime.winRate,
@@ -434,7 +420,7 @@ const PredictChart = () => {
         },
         label: {
           show: true,
-          position: 'top' as const,
+          position: 'top',
           formatter: '{c}%'
         }
       }
@@ -485,7 +471,7 @@ const PredictChart = () => {
       markLine: {
         silent: true,
         symbol: 'none',
-       
+
         data: [
           {
             yAxis: 70,
@@ -617,105 +603,77 @@ const PredictChart = () => {
   };
 
   return (
-    <MainLayout>
-      <div className="predict-chart-container">
-        <Space direction="vertical" size="large" style={{ width: "100%" }}>
-          <Space>
-            <span>预测策略：</span>
-            <Select
-              value={guessType}
-              onChange={handleGuessTypeChange}
-              style={{ width: 150 }}
-              options={[
-                { value: "ai_5_normal", label: "AI-5" },
-                { value: "ai_5_plus", label: "AI-5 Plus" },
-                { value: "ai_5_gemini", label: "AI-5 Gemini" },
-              ]}
-            />
-          </Space>
-          <PredictStats
-            guess_type={guessType}
-            onDataChange={handleDataChange}
-            onWinTypeChange={handleWinTypeChange}
-            defaultWinType={winType}
-          />
-
-          <Space>
-            <span>白天时间范围：</span>
-            <Select
-              value={`${dayTimeRange[0]}-${dayTimeRange[1]}`}
-              onChange={handleDayTimeRangeChange}
-              style={{ width: 120 }}
-              options={[
-                { value: "6-18", label: "白天 6-18点" },
-                { value: "7-19", label: "白天 7-19点" },
-                { value: "8-20", label: "白天 8-20点" },
-                { value: "9-21", label: "白天 9-21点" },
-              ]}
-            />
-          </Space>
-
-          <Card>
-            <Spin spinning={loading}>
-              <ReactECharts
-                option={winRateOption}
-                style={{ height: '400px' }}
-                notMerge={true}
-                opts={{ renderer: 'svg' }}
-              />
-            </Spin>
-          </Card>
-
-          <Card title={
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <span>最近一周每日胜率</span>
+      <MainLayout>
+        <div className="predict-chart-container">
+          <Space direction="vertical" size="large" style={{ width: "100%" }}>
+            <Space>
+              <span>预测策略：</span>
               <Select
-                value={`${dayTimeRange[0]}-${dayTimeRange[1]}`}
-                onChange={handleDayTimeRangeChange}
-                style={{ width: 120 }}
-                options={[
-                  { value: "6-18", label: "白天 6-18点" },
-                  { value: "7-19", label: "白天 7-19点" },
-                  { value: "8-20", label: "白天 8-20点" },
-                  { value: "9-21", label: "白天 9-21点" },
-                ]}
+                  value={guessType}
+                  onChange={handleGuessTypeChange}
+                  style={{ width: 150 }}
+                  options={[
+                    { value: "ai_5_normal", label: "AI-5" },
+                    { value: "ai_5_plus", label: "AI-5 Plus" },
+                    { value: "ai_5_gemini", label: "AI-5 Gemini" },
+                  ]}
               />
-            </div>
-          }>
-            <Spin spinning={loading}>
-              <ReactECharts
-                option={weeklyOption}
-                style={{ height: '400px' }}
-                notMerge={true}
-                opts={{ renderer: 'svg' }}
-              />
-            </Spin>
-          </Card>
+            </Space>
+            <PredictStats
+                guess_type={guessType}
+                onDataChange={handleDataChange}
+                onWinTypeChange={handleWinTypeChange}
+                defaultWinType={winType}
+            />
 
-          <Card>
-            <Spin spinning={loading}>
-              <ReactECharts
-                option={winLoseOption}
-                style={{ height: '400px' }}
-                notMerge={true}
-                opts={{ renderer: 'svg' }}
-              />
-            </Spin>
-          </Card>
 
-          <Card>
-            <Spin spinning={loading}>
-              <ReactECharts
-                option={heatmapOption}
-                style={{ height: '400px' }}
-                notMerge={true}
-                opts={{ renderer: 'svg' }}
-              />
-            </Spin>
-          </Card>
-        </Space>
-      </div>
-    </MainLayout>
+
+            <Card>
+              <Spin spinning={loading}>
+                <ReactECharts
+                    option={winRateOption}
+                    style={{ height: '400px' }}
+                    notMerge={true}
+                    opts={{ renderer: 'svg' }}
+                />
+              </Spin>
+            </Card>
+
+            <Card title="最近一周每日胜率">
+              <Spin spinning={loading}>
+                <ReactECharts
+                    option={weeklyOption}
+                    style={{ height: '400px' }}
+                    notMerge={true}
+                    opts={{ renderer: 'svg' }}
+                />
+              </Spin>
+            </Card>
+
+            <Card>
+              <Spin spinning={loading}>
+                <ReactECharts
+                    option={winLoseOption}
+                    style={{ height: '400px' }}
+                    notMerge={true}
+                    opts={{ renderer: 'svg' }}
+                />
+              </Spin>
+            </Card>
+
+            <Card>
+              <Spin spinning={loading}>
+                <ReactECharts
+                    option={heatmapOption}
+                    style={{ height: '400px' }}
+                    notMerge={true}
+                    opts={{ renderer: 'svg' }}
+                />
+              </Spin>
+            </Card>
+          </Space>
+        </div>
+      </MainLayout>
   );
 };
 
