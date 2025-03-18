@@ -61,6 +61,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'Prompt管理',
     },
     {
+      key: '/tool',
+      icon: <RobotOutlined />,
+      label: '工具箱',
+    },
+    {
       key: '/',
       icon: <MessageOutlined />,
       label: 'Chat',
