@@ -542,7 +542,7 @@ const Predict = ({ guess_type }: PredictProps) => {
     <MainLayout>
       <div className="predict-container">
         <div className="predict-header">
-         
+          <h4>{guess_type}</h4>
           <div className="select-ai-type"></div>
           <div className="predict-controls">
          <div style={{marginRight: '10px',height: '30px'}}>

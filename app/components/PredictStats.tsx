@@ -203,9 +203,9 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
           />
           
           <Radio.Group value={winType} onChange={handleWinTypeChange}>
-            <Radio.Button value="current">当期胜率</Radio.Button>
-            <Radio.Button value="two">两期胜率</Radio.Button>
-            <Radio.Button value="any">三期胜率</Radio.Button>
+            <Radio.Button value="current">当期</Radio.Button>
+            <Radio.Button value="two">两期</Radio.Button>
+            <Radio.Button value="any">三期</Radio.Button>
           </Radio.Group>
 
           <RangePicker
