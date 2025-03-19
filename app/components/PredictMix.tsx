@@ -4,10 +4,12 @@ import {
   CheckCircleOutlined,
   CloseCircleOutlined,
   InfoCircleOutlined,
+  LineChartOutlined,
   ReloadOutlined
 } from "@ant-design/icons";
 import { Button, Card, Col, Modal, Row, Select, Table, Tag, Tooltip, Typography } from "antd";
 import { Dayjs } from "dayjs";
+import ReactECharts from 'echarts-for-react';
 import { useEffect, useRef, useState } from "react";
 import toast from "react-hot-toast";
 import * as XLSX from "xlsx";
@@ -83,6 +85,11 @@ const PredictMix = ({}: PredictProps) => {
     DrawResult[] | null
   >(null);
   const statsRef = useRef<PredictStatsRef>(null);
+  const [isWinStatusModalVisible, setIsWinStatusModalVisible] = useState(false);
+  const [winStatusChartData, setWinStatusChartData] = useState<{
+    defaultModelData: { time: string; value: number }[];
+    assistModelData: { time: string; value: number }[];
+  }>({ defaultModelData: [], assistModelData: [] });
 
   // 添加胜率计算函数
   const calculateWinRates = (items: PredictItem[]) => {
@@ -123,6 +130,56 @@ const PredictMix = ({}: PredictProps) => {
       two: { rate: twoWinRate, total: validTwoItems.length, win: twoWinCount },
       three: { rate: threeWinRate, total: validThreeItems.length, win: threeWinCount }
     };
+  };
+
+  // 处理中奖状态图表数据
+  const processWinStatusData = (defaultData: PredictItem[], assistData: PredictItem[]) => {
+    const defaultModelData = defaultData.map(item => {
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      const timeStr = date.toDateString() === today.toDateString()
+        ? date.toLocaleTimeString("zh-CN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        : date.toLocaleString("zh-CN");
+
+      return {
+        time: timeStr,
+        value: checkCurrentPeriodMatch(
+          formatGuessResult(item.guess_result),
+          item.ext_result,
+          item.guess_period
+        ) ? 1 : -1
+      };
+    });
+
+    const assistModelData = assistData.map(item => {
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      const timeStr = date.toDateString() === today.toDateString()
+        ? date.toLocaleTimeString("zh-CN", {
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit",
+          })
+        : date.toLocaleString("zh-CN");
+
+      return {
+        time: timeStr,
+        value: checkCurrentPeriodMatch(
+          formatGuessResult(item.guess_result),
+          item.ext_result,
+          item.guess_period
+        ) ? 1 : -1
+      };
+    });
+
+    setWinStatusChartData({
+      defaultModelData,
+      assistModelData
+    });
   };
 
   const fetchData = async (page: number, size: number) => {
@@ -198,6 +255,9 @@ const PredictMix = ({}: PredictProps) => {
           filteredData.unshift(assistItem);
         }
       }
+
+      // 处理中奖状态图表数据
+      processWinStatusData(defaultData, assistData);
 
       setData(filteredData);
       setTotal(defaultResponse.data.data.total);
@@ -451,6 +511,14 @@ const PredictMix = ({}: PredictProps) => {
     toast.success("导出成功！");
   };
 
+  const handleWinStatusModalClose = () => {
+    setIsWinStatusModalVisible(false);
+  };
+
+  const showWinStatusModal = () => {
+    setIsWinStatusModalVisible(true);
+  };
+
   const columns = [
     {
       title: "期号",
@@ -668,7 +736,13 @@ const PredictMix = ({}: PredictProps) => {
             </Select>
           </div>
           <div className="predict-controls">
-        
+            <Button
+              icon={<LineChartOutlined />}
+              onClick={showWinStatusModal}
+              style={{ marginRight: 8 }}
+            >
+              中奖状态图
+            </Button>
             <Button
               type="primary"
               onClick={handleExportExcel}
@@ -860,6 +934,114 @@ const PredictMix = ({}: PredictProps) => {
               />
             </div>
           )}
+        </Modal>
+
+        {/* 中奖状态图模态框 */}
+        <Modal
+          title={
+            <div>
+              <LineChartOutlined style={{ marginRight: "8px", color: "#1890ff" }} />
+              中奖状态对比图
+            </div>
+          }
+          open={isWinStatusModalVisible}
+          onCancel={handleWinStatusModalClose}
+          footer={[
+            <Button key="close" onClick={handleWinStatusModalClose}>
+              关闭
+            </Button>,
+          ]}
+          width={1000}
+          className="win-status-modal"
+        >
+          <Card>
+            <ReactECharts
+              option={{
+                title: {
+                  text: '模型中奖状态对比',
+                  left: 'center'
+                },
+                tooltip: {
+                  trigger: 'axis',
+                  formatter: function(params: any) {
+                    let result = params[0].name + '<br/>';
+                    params.forEach((param: any) => {
+                      const modelName = param.seriesName;
+                      const status = param.value > 0 ? '中奖' : '未中奖';
+                      const color = param.color;
+                      const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>`;
+                      result += `${marker}${modelName}: ${status}<br/>`;
+                    });
+                    return result;
+                  }
+                },
+                legend: {
+                  data: ['默认模型', '配合模型'],
+                  top: '30px'
+                },
+                grid: {
+                  top: '80px',
+                  bottom: '40px',
+                  left: '3%',
+                  right: '4%',
+                  containLabel: true
+                },
+                xAxis: {
+                  type: 'category',
+                  data: winStatusChartData.defaultModelData.map(item => item.time),
+                  axisLabel: {
+                    rotate: 45,
+                    interval: Math.floor(winStatusChartData.defaultModelData.length / 10)
+                  }
+                },
+                yAxis: {
+                  type: 'value',
+                  min: -2,
+                  max: 2,
+                  interval: 1,
+                  axisLabel: {
+                    formatter: function(value: number) {
+                      if (value === 1) return '中奖';
+                      if (value === -1) return '未中奖';
+                      return '';
+                    }
+                  }
+                },
+                series: [
+                  {
+                    name: '默认模型',
+                    type: 'line',
+                    data: winStatusChartData.defaultModelData.map(item => item.value),
+                    step: 'middle',
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: {
+                      color: '#2593fc'
+                    },
+                    lineStyle: {
+                      width: 2
+                    }
+                  },
+                  {
+                    name: '配合模型',
+                    type: 'line',
+                    data: winStatusChartData.assistModelData.map(item => item.value),
+                    step: 'middle',
+                    symbol: 'circle',
+                    symbolSize: 8,
+                    itemStyle: {
+                      color: '#52c41a'
+                    },
+                    lineStyle: {
+                      width: 2
+                    }
+                  }
+                ]
+              }}
+              style={{ height: '500px' }}
+              opts={{ renderer: 'svg' }}
+            />
+          </Card>
         </Modal>
       </div>
     </MainLayout>
