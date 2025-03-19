@@ -271,7 +271,7 @@ const PredictMix = ({}: PredictProps) => {
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize, timeRange]);
+  }, [currentPage, pageSize, timeRange, defaultModel, assistModel]);
 
   // 当pageSize变化时保存到localStorage
   useEffect(() => {
