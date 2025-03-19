@@ -1,4 +1,15 @@
-import { AppstoreOutlined, FileSearchOutlined, FireOutlined, LineChartOutlined, MenuFoldOutlined, MenuUnfoldOutlined, MessageOutlined, RobotOutlined, RocketOutlined } from '@ant-design/icons';
+import {
+  AppstoreOutlined,
+  FileSearchOutlined,
+  FireOutlined,
+  LineChartOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined, MergeOutlined,
+  MessageOutlined, PrinterOutlined,
+  RobotOutlined,
+  RocketOutlined,
+  ToolOutlined
+} from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -19,6 +30,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       key: '/todo',
       icon: <FileSearchOutlined />,
       label: 'List',
+    },
+    {
+      key: '/predict-mix',
+      icon: <MergeOutlined />,
+      label: 'AI混合预测',
     },
     {
       key: '/predict',
@@ -52,7 +68,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     },
     {
       key: '/log',
-      icon: <AppstoreOutlined />,
+      icon: <PrinterOutlined />,
       label: 'Log',
     },
     {
@@ -62,7 +78,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     },
     {
       key: '/tool',
-      icon: <RobotOutlined />,
+      icon: <ToolOutlined />,
       label: '工具箱',
     },
     {

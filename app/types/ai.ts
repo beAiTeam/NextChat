@@ -9,8 +9,8 @@ export enum LotAiGuessType {
   Ai5_Plus = "ai_5_plus",
   Ai5_Gemini = "ai_5_gemini",
   Ai5_Gemini_Plus = "ai_5_gemini_plus",
-  Zlzdm = "zlzdm",
-  Ylzhb = "ylzhb",
+  // Zlzdm = "zlzdm",
+  // Ylzhb = "ylzhb",
 }
 
 export interface AiTypeConfig {
