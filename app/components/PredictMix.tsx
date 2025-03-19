@@ -230,30 +230,37 @@ const PredictMix = ({}: PredictProps) => {
         const nextPeriod = defaultItem?.ext_result?.length>1 ? defaultItem.ext_result[1].draw_number: 'empty';
         const assistItem = assistData.find((item: PredictItem) => item.guess_period === nextPeriod);
         
-        if (!assistItem) {
-          // 如果没有找到对应期号的配合模型数据，使用默认模型数据
-          console.log('没有找到对应期号的配合模型数据，使用默认模型数据',defaultItem);
-          filteredData.unshift(defaultItem);
-          continue;
-        }
-
         // 第一条数据（最后一期）使用默认模型
         if (i === defaultData.length - 1) {
           filteredData.unshift(defaultItem);
           continue;
         }
 
-        // 获取上一条数据的预测结果来决定这一期用哪个模型
-        const prevItem = filteredData[0]; // 因为我们是unshift，所以最新的数据在数组开头
-        const prevPrediction = formatGuessResult(prevItem.guess_result);
-        const isPrevWin = checkThreePeriodsMatch(prevPrediction, prevItem.ext_result);
+        // 获取最近两期的数据来判断是否连续输两次
+        const lastItem = filteredData[0]; // 上一期
+        const lastTwoItem = filteredData[1]; // 上上期
 
-        // 如果上一期中奖了，这一期用默认模型
-        // 如果上一期没中，这一期用配合模型
-        if (isPrevWin) {
+        // 如果没有足够的历史数据，使用默认模型
+        if (!lastItem || !lastTwoItem) {
           filteredData.unshift(defaultItem);
-        } else {
+          continue;
+        }
+
+        // 检查上一期和上上期是否都是默认模型且都未中奖
+        const isLastItemDefault = lastItem.ai_type.name === defaultItem.ai_type.name;
+        const isLastTwoItemDefault = lastTwoItem.ai_type.name === defaultItem.ai_type.name;
+        
+        const lastPrediction = formatGuessResult(lastItem.guess_result);
+        const lastTwoPrediction = formatGuessResult(lastTwoItem.guess_result);
+        
+        const isLastLose = !checkThreePeriodsMatch(lastPrediction, lastItem.ext_result);
+        const isLastTwoLose = !checkThreePeriodsMatch(lastTwoPrediction, lastTwoItem.ext_result);
+
+        // 如果上两期都是默认模型且都输了，使用配合模型
+        if (isLastItemDefault && isLastTwoItemDefault && isLastLose && isLastTwoLose && assistItem) {
           filteredData.unshift(assistItem);
+        } else {
+          filteredData.unshift(defaultItem);
         }
       }
 
