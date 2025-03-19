@@ -7,7 +7,7 @@ import {
   LineChartOutlined,
   ReloadOutlined
 } from "@ant-design/icons";
-import { Button, Card, Col, Modal, Row, Select, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, DatePicker, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { Dayjs } from "dayjs";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useRef, useState } from "react";
@@ -33,6 +33,7 @@ import "./PredictMix.scss";
 import { PredictStatsRef } from "./PredictStats";
 
 const { Title, Text, Paragraph } = Typography;
+const { RangePicker } = DatePicker;
 
 interface AiTypeConfig {
   id: string;
@@ -706,7 +707,7 @@ const PredictMix = ({}: PredictProps) => {
     <MainLayout>
       <div className="predict-container">
         <div className="predict-header">
-          <h4>混合预测 【按3期状态来决定下期采用哪个模型预测】</h4>
+          <h4>混合预测 </h4>
           <div className="select-ai-type">
             默认:
             <Select
@@ -756,17 +757,20 @@ const PredictMix = ({}: PredictProps) => {
           </div>
         </div>
 
-        {/* <div style={{marginRight: '10px',height: '30px'}}>
-         <PredictStats 
-          ref={statsRef}
-          guess_type={defaultModel}
-          defaultPageSize={100}
-          defaultWinType="current"
-          onDataChange={(data) => console.log('数据更新:', data)}
-          onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
-          onTimeRangeChange={handleTimeRangeChange}
-         />
-         </div> */}
+        <div style={{marginBottom: '16px'}}>
+          <Space>
+            <RangePicker
+              showTime={{ format: 'HH:mm' }}
+              format="YYYY-MM-DD HH:mm"
+              onChange={(dates: any, dateStrings: [string, string]) => {
+                handleTimeRangeChange(dates);
+              }}
+              value={timeRange}
+              style={{ minWidth: '300px' }}
+            />
+          </Space>
+          <span style={{marginLeft: '10px'}}>【按3期状态来决定下期采用哪个模型预测】</span>
+        </div>
 
         <div className="predict-table-container">
           <div style={{ marginBottom: '16px' }}>

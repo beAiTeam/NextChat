@@ -130,7 +130,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         />
       </Sider>
       <Layout>
-        <Content style={{ padding: '24px', background: '#fff', margin: '24px 16px', overflowY: 'auto', height: 'calc(100vh - 48px)' }}>
+        <Content style={{ padding: '24px', background: '#fff',   overflowY: 'auto', height: 'calc(100vh - 48px)' }}>
           {children}
         </Content>
       </Layout>

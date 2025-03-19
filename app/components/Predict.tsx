@@ -545,17 +545,6 @@ const Predict = ({ guess_type }: PredictProps) => {
           <h4>{guess_type}</h4>
           <div className="select-ai-type"></div>
           <div className="predict-controls">
-         <div style={{marginRight: '10px',height: '30px'}}>
-         <PredictStats 
-          ref={statsRef}
-          guess_type={guess_type}
-          defaultPageSize={100}
-          defaultWinType="current"
-          onDataChange={(data) => console.log('数据更新:', data)}
-          onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
-          onTimeRangeChange={handleTimeRangeChange}
-         />
-         </div>
             <Button
               type="primary"
               onClick={handleExportExcel}
@@ -568,6 +557,15 @@ const Predict = ({ guess_type }: PredictProps) => {
             </Button>
           </div>
         </div>
+        <PredictStats 
+          ref={statsRef}
+          guess_type={guess_type}
+          defaultPageSize={100}
+          defaultWinType="current"
+          onDataChange={(data) => console.log('数据更新:', data)}
+          onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
+          onTimeRangeChange={handleTimeRangeChange}
+         />
 
         <div className="predict-table-container">
           <Table
