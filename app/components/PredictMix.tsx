@@ -67,8 +67,21 @@ interface PredictProps {}
 const PredictMix = ({}: PredictProps) => {
   const localStorage = safeLocalStorage();
   const [currentPage, setCurrentPage] = useState(1);
-  const [defaultModel, setDefaultModel] = useState<LotAiGuessType>(LotAiGuessType.Ai5_Normal);
-  const [assistModel, setAssistModel] = useState<LotAiGuessType>(LotAiGuessType.Ai5_Gemini_Plus);
+  const [defaultModel, setDefaultModel] = useState<LotAiGuessType>(() => {
+    // 尝试从localStorage读取保存的默认模型
+    const savedDefaultModel = localStorage.getItem("predict_default_model");
+    return savedDefaultModel ? savedDefaultModel as LotAiGuessType : LotAiGuessType.Ai5_Normal;
+  });
+  const [assistModel, setAssistModel] = useState<LotAiGuessType>(() => {
+    // 尝试从localStorage读取保存的配合模型
+    const savedAssistModel = localStorage.getItem("predict_assist_model");
+    return savedAssistModel ? savedAssistModel as LotAiGuessType : LotAiGuessType.Ai5_Gemini_Plus;
+  });
+  const [switchStrategy, setSwitchStrategy] = useState<number>(() => {
+    // 尝试从localStorage读取保存的切换策略
+    const savedStrategy = localStorage.getItem("predict_switch_strategy");
+    return savedStrategy ? parseInt(savedStrategy) : 2;
+  });
   const [pageSize, setPageSize] = useState(() => {
     // 尝试从localStorage读取保存的pageSize
     const savedPageSize = localStorage.getItem("predict_page_size");
@@ -236,28 +249,25 @@ const PredictMix = ({}: PredictProps) => {
           continue;
         }
 
-        // 获取最近两期的数据来判断是否连续输两次
-        const lastItem = filteredData[0]; // 上一期
-        const lastTwoItem = filteredData[1]; // 上上期
+        // 获取历史数据来判断是否连续输
+        const loseCount = (() => {
+          let count = 0;
+          for (let j = 0; j < switchStrategy; j++) {
+            if (filteredData.length <= j) break;
+            const item = filteredData[j];
+            const prediction = formatGuessResult(item.guess_result);
+            const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+            if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
+              count++;
+            } else {
+              break;
+            }
+          }
+          return count;
+        })();
 
-        // 如果没有足够的历史数据，使用默认模型
-        if (!lastItem || !lastTwoItem) {
-          filteredData.unshift(defaultItem);
-          continue;
-        }
-
-        // 检查上一期和上上期是否都是默认模型且都未中奖
-        const isLastItemDefault = lastItem.ai_type.name === defaultItem.ai_type.name;
-        const isLastTwoItemDefault = lastTwoItem.ai_type.name === defaultItem.ai_type.name;
-        
-        const lastPrediction = formatGuessResult(lastItem.guess_result);
-        const lastTwoPrediction = formatGuessResult(lastTwoItem.guess_result);
-        
-        const isLastLose = !checkThreePeriodsMatch(lastPrediction, lastItem.ext_result);
-        const isLastTwoLose = !checkThreePeriodsMatch(lastTwoPrediction, lastTwoItem.ext_result);
-
-        // 如果上两期都是默认模型且都输了，使用配合模型
-        if (isLastItemDefault && isLastTwoItemDefault && isLastLose && isLastTwoLose && assistItem) {
+        // 如果连续输的次数达到切换策略要求，使用配合模型
+        if (loseCount >= switchStrategy && assistItem) {
           filteredData.unshift(assistItem);
         } else {
           filteredData.unshift(defaultItem);
@@ -278,12 +288,27 @@ const PredictMix = ({}: PredictProps) => {
 
   useEffect(() => {
     fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize, timeRange, defaultModel, assistModel]);
+  }, [currentPage, pageSize, timeRange, defaultModel, assistModel,switchStrategy]);
 
   // 当pageSize变化时保存到localStorage
   useEffect(() => {
     localStorage.setItem("predict_page_size", pageSize.toString());
   }, [pageSize]);
+
+  // 当switchStrategy变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem("predict_switch_strategy", switchStrategy.toString());
+  }, [switchStrategy]);
+
+  // 当defaultModel变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem("predict_default_model", defaultModel);
+  }, [defaultModel]);
+
+  // 当assistModel变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem("predict_assist_model", assistModel);
+  }, [assistModel]);
 
   // 处理时间范围变化
   const handleTimeRangeChange = (newTimeRange: [Dayjs | null, Dayjs | null]) => {
@@ -731,7 +756,7 @@ const PredictMix = ({}: PredictProps) => {
             </Select>
             <span style={{marginRight: '10px'}}>配合:</span>
             <Select
-              style={{ width: 200 }}
+              style={{ width: 200, marginRight: 16 }}
               value={assistModel}
               onChange={(value) => setAssistModel(value)}
               placeholder="选择配合模型"
@@ -741,6 +766,17 @@ const PredictMix = ({}: PredictProps) => {
                   {type}
                 </Select.Option>
               ))}
+            </Select>
+            <span style={{marginRight: '10px'}}>切换策略:</span>
+            <Select
+              style={{ width: 120 }}
+              value={switchStrategy}
+              onChange={(value) => setSwitchStrategy(value)}
+              placeholder="选择切换策略"
+            >
+              <Select.Option value={1}>连输1期切换</Select.Option>
+              <Select.Option value={2}>连输2期切换</Select.Option>
+              <Select.Option value={3}>连输3期切换</Select.Option>
             </Select>
           </div>
           <div className="predict-controls">

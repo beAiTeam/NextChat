@@ -21,7 +21,9 @@ export default function ToolPage() {
   });
 
   const calculateNumbers = (text: string) => {
-    const numbers = text.split('').map(Number);
+    // 清理输入，只保留数字
+    const cleanText = text.replace(/[^0-3]/g, '');
+    const numbers = cleanText.split('').map(Number);
     const counts = {
       a: numbers.filter(n => n === 1).length,
       b: numbers.filter(n => n === 2).length,
