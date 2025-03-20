@@ -28,10 +28,15 @@ export const checkPeriodMatch = (prediction: string, drawResult: DrawResult): bo
   const lastFourDigits = prediction.slice(1);
   const fullNumberDigits = drawResult.full_number.split('');
 
-  // 否则继续检查原有条件
+  // 检查第一位数字是否匹配
   const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
+  
+  // 创建一个新的数组，排除掉第一位匹配的数字
+  const remainingDigits = fullNumberDigits.filter(digit => digit !== firstDigitOfPrediction);
+  
+  // 检查剩余4位中是否有任何一位在剩余的开奖号码中
   const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit =>
-    fullNumberDigits.includes(digit)
+    remainingDigits.includes(digit)
   );
 
   return isFirstDigitMatched && isAnyLastFourDigitsMatched;
@@ -153,6 +158,94 @@ export const calculateTotalProfit = (data: any[]): number => {
       item.ext_result
     );
     return total + betResult.profit;
+  }, 0);
+  
+  return Math.floor(total); // 返回整数
+};
+
+// 倍投配置接口
+export interface BetConfig {
+  x: number;
+  y: number;
+  z: number;
+}
+
+// 计算单行的余额变化
+export interface BalanceResult {
+  balance: number;  // 余额变化
+  details: string;  // 详情，用于展示
+}
+
+export const calculateBalanceChange = (
+  prediction: string, 
+  drawResults: DrawResult[] | null,
+  betConfig: BetConfig
+): BalanceResult => {
+  if (!drawResults || drawResults.length === 0 || !prediction || prediction === "暂无结果") {
+    return {
+      balance: 0,
+      details: "等待开奖"
+    };
+  }
+
+  // 添加长度检查，必须等于3才计算
+  if (drawResults.length !== 3) {
+    return {
+      balance: 0,
+      details: "等待开奖"
+    };
+  }
+
+  const { x, y, z } = betConfig;
+  let totalBalance = 0;
+  let balanceDetails = [];
+  let hasWon = false;
+
+  // 遍历三期开奖结果
+  for (let i = 0; i < 3; i++) {
+    // 如果已经中奖，不再继续
+    if (hasWon) break;
+
+    const isWin = checkPeriodMatch(prediction, drawResults[i]);
+    
+    if (isWin) {
+      if (i === 0) {
+        // 第一期中奖
+        totalBalance += 62.7 * x;
+        balanceDetails.push(`+${(62.7 * x).toFixed(1)}`);
+      } else if (i === 1) {
+        // 第二期中奖
+        totalBalance += 62.7 * y ;
+        balanceDetails.push(`+${(62.7 * y  ).toFixed(1)}`);
+      } else {
+        // 第三期中奖
+        totalBalance += 62.7 * z  ;
+        balanceDetails.push(`+${(62.7 * z  ).toFixed(1)}`);
+      }
+      hasWon = true;
+    } else {
+      // 未中奖
+      const loss = i === 0 ? x : i === 1 ? y : z;
+      totalBalance -= 36.3 * loss;
+      balanceDetails.push(`-${(36.3 * loss).toFixed(1)}`);
+    }
+  }
+
+  return {
+    balance: Math.floor(totalBalance * 100) / 100, // 保留两位小数
+    details: balanceDetails.join(" → ")
+  };
+};
+
+// 计算多行数据的总余额变化
+export const calculateTotalBalance = (data: any[], betConfig: BetConfig): number => {
+  const total = data.reduce((total, item) => {
+    const balanceResult = calculateBalanceChange(
+      formatGuessResult(item.guess_result),
+      item.ext_result,
+      betConfig
+    );
+    return total + balanceResult.balance;
   }, 0);
   
   return Math.floor(total); // 返回整数

@@ -1,10 +1,12 @@
 "use client";
 
-import { Card, Select, Space, Spin } from "antd";
+import { Card, Input, Select, Space, Spin } from "antd";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import {
+  BetConfig,
+  calculateBalanceChange,
   checkCurrentPeriodMatch,
   checkThreePeriodsMatch,
   checkTwoPeriodsMatch,
@@ -41,6 +43,15 @@ const PredictChart = () => {
   const [heatmapData, setHeatmapData] = useState<any[]>([]);
   const [weeklyChartData, setWeeklyChartData] = useState<any[]>([]);
   const [guessType, setGuessType] = useState<string>("ai_5_normal");
+  const [betConfig, setBetConfig] = useState<BetConfig>(() => {
+    try {
+      const savedConfig = localStorage.getItem('betConfig');
+      return savedConfig ? JSON.parse(savedConfig) : { x: 1, y: 2, z: 4 };
+    } catch {
+      return { x: 1, y: 2, z: 4 };
+    }
+  });
+  const [balanceData, setBalanceData] = useState<any[]>([]);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -276,6 +287,41 @@ const PredictChart = () => {
     // 生成热力图数据
     const heatmapData = generateHeatmapData(sortedItems, currentWinType);
 
+    // 生成余额变化数据
+    const balanceData = sortedItems.map((item, index) => {
+      const currentItems = sortedItems.slice(0, index + 1);
+      let totalBalance = 0;
+      
+      currentItems.forEach(currentItem => {
+        const balanceResult = calculateBalanceChange(
+          formatGuessResult(currentItem.guess_result),
+          currentItem.ext_result,
+          betConfig
+        );
+        totalBalance += balanceResult.balance;
+      });
+
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      let timeStr;
+
+      if (date.toDateString() === today.toDateString()) {
+        timeStr = date.toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      } else {
+        timeStr = date.toLocaleString("zh-CN");
+      }
+
+      return {
+        time: timeStr,
+        balance: totalBalance,
+      };
+    });
+
+    setBalanceData(balanceData);
     setChartData(chartData);
     setWinLoseData(winLoseData);
     setHeatmapData(heatmapData);
@@ -314,13 +360,28 @@ const PredictChart = () => {
     setGuessType(value);
   };
 
+  // 处理倍投配置变化
+  const handleBetConfigChange = (key: 'x' | 'y' | 'z', value: string) => {
+    // 确保输入为正数，且不超过100
+    const numValue = Math.min(Math.max(Number(value) || 0, 0), 100);
+    const newConfig = { ...betConfig, [key]: numValue };
+    setBetConfig(newConfig);
+    try {
+      localStorage.setItem('betConfig', JSON.stringify(newConfig));
+    } catch (error) {
+      console.error('Failed to save bet config:', error);
+    }
+    // 重新获取数据
+    fetchWeeklyData();
+  };
+
   useEffect(() => {
     fetchWeeklyData();
-  }, [guessType, winType]);
+  }, [guessType, winType, betConfig]);
 
   useEffect(() => {
     processChartData(data, winType);
-  }, [winType]);
+  }, [winType, betConfig]);
 
   const weeklyOption = {
     title: {
@@ -602,6 +663,62 @@ const PredictChart = () => {
     }]
   };
 
+  const balanceOption = {
+    title: {
+      text: '余额变化趋势',
+      left: 'center'
+    },
+    tooltip: {
+      trigger: 'axis' as const,
+      formatter: '{b}<br/>余额: {c}'
+    },
+    xAxis: {
+      type: 'category' as const,
+      data: balanceData.map(item => item.time),
+      axisLabel: {
+        rotate: 45,
+        interval: Math.floor(balanceData.length / 10)
+      }
+    },
+    yAxis: {
+      type: 'value' as const,
+      name: '余额',
+      splitLine: {
+        show: true,
+        lineStyle: {
+          type: 'dashed' as const
+        }
+      }
+    },
+    series: [{
+      data: balanceData.map(item => item.balance),
+      type: 'line' as const,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 8,
+      itemStyle: {
+        color: '#2593fc'
+      },
+      lineStyle: {
+        width: 2
+      },
+      markLine: {
+        silent: true,
+        symbol: 'none',
+        data: [
+          {
+            yAxis: 0,
+            lineStyle: {
+              color: '#ff4d4f',
+              width: 2,
+              type: 'solid' as const
+            }
+          }
+        ]
+      }
+    }]
+  };
+
   return (
       <MainLayout>
         <div className="predict-chart-container">
@@ -619,6 +736,36 @@ const PredictChart = () => {
                     { value: "ai_5_gemini_plus", label: "AI-5 Gemini Plus" },
                   ]}
               />
+              <span>倍投配置：</span>
+              <Space>
+                X:
+                <Input
+                  type="number"
+                  value={betConfig.x}
+                  onChange={(e) => handleBetConfigChange('x', e.target.value)}
+                  style={{ width: 180 }}
+                  min={0}
+                  max={1000}
+                />
+                Y:
+                <Input
+                  type="number"
+                  value={betConfig.y}
+                  onChange={(e) => handleBetConfigChange('y', e.target.value)}
+                  style={{ width: 180 }}
+                  min={0}
+                  max={1000}
+                />
+                Z:
+                <Input
+                  type="number"
+                  value={betConfig.z}
+                  onChange={(e) => handleBetConfigChange('z', e.target.value)}
+                  style={{ width: 180 }}
+                  min={0}
+                  max={1000}
+                />
+              </Space>
             </Space>
             <PredictStats
                 guess_type={guessType}
@@ -627,7 +774,16 @@ const PredictChart = () => {
                 defaultWinType={winType}
             />
 
-
+            <Card>
+              <Spin spinning={loading}>
+                <ReactECharts
+                    option={balanceOption}
+                    style={{ height: '400px' }}
+                    notMerge={true}
+                    opts={{ renderer: 'svg' }}
+                />
+              </Spin>
+            </Card>
 
             <Card>
               <Spin spinning={loading}>
