@@ -177,7 +177,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       if (dates) {
         setTimeRange([dates[0], dates[1]]);
         onTimeRangeChange?.([dates[0], dates[1]]);
-        setPageSize(5000); // 当选择日期后，自动将数据量设置为5000
+        setPageSize(9999999); // 当选择日期后，自动将数据量设置为5000
       } else {
         setTimeRange([null, null]);
         onTimeRangeChange?.([null, null]);
