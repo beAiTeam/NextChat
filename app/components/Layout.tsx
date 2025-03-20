@@ -8,6 +8,7 @@ import {
   MessageOutlined, PrinterOutlined,
   RobotOutlined,
   RocketOutlined,
+  SettingOutlined,
   ToolOutlined
 } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
@@ -80,6 +81,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       key: '/tool',
       icon: <ToolOutlined />,
       label: '工具箱',
+    },
+    {
+      key: '/predict-config',
+      icon: <SettingOutlined />,
+      label: '预测配置',
     },
     {
       key: '/',

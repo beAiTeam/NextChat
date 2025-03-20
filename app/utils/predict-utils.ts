@@ -1,4 +1,6 @@
 // 预测结果类型定义
+import { safeLocalStorage } from '../utils';
+
 export interface GuessResult {
   top_1_number: number;
   top_2_number: number;
@@ -31,6 +33,27 @@ export const checkPeriodMatch = (prediction: string, drawResult: DrawResult): bo
   // 检查第一位数字是否匹配
   const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
   
+  // 获取配置: 选项1(option1)仅检查第一位，选项2(option2)检查第一位和任一其他位
+  let matchCondition = 'option2'; // 默认使用选项2
+  
+  try {
+    if (typeof window !== "undefined") {
+      const storage = safeLocalStorage();
+      const savedMatchCondition = storage.getItem('matchConditionConfig');
+      if (savedMatchCondition) {
+        matchCondition = savedMatchCondition;
+      }
+    }
+  } catch (e) {
+    console.error("Failed to get match condition config:", e);
+  }
+  
+  // 如果是选项1，只需要第一位匹配即可
+  if (matchCondition === 'option1') {
+    return isFirstDigitMatched;
+  }
+  
+  // 选项2：需要第一位和任一其他位匹配
   // 创建一个新的数组，排除掉第一位匹配的数字
   const remainingDigits = fullNumberDigits.filter(digit => digit !== firstDigitOfPrediction);
   
@@ -119,11 +142,25 @@ export const calculateBetProfit = (prediction: string, drawResults: DrawResult[]
   let betDetails = [];
   let lossCount = 0; // 记录连续输的次数
   let hasWon = false; // 记录是否已经中奖
+  
+  // 获取是否中奖后继续投注的配置
+  let continueBetting = false; // 默认中奖后不继续投注
+  try {
+    if (typeof window !== "undefined") {
+      const storage = safeLocalStorage();
+      const savedContinueBetting = storage.getItem('continueBettingConfig');
+      if (savedContinueBetting) {
+        continueBetting = savedContinueBetting === 'true';
+      }
+    }
+  } catch (e) {
+    console.error("Failed to get continue betting config:", e);
+  }
 
   // 遍历三期开奖结果
   for (let i = 0; i < 3; i++) {
-    // 如果已经中奖，不再继续下注
-    if (hasWon) {
+    // 如果已经中奖且配置为不继续投注，则不再继续下注
+    if (hasWon && !continueBetting) {
       break;
     }
 
@@ -200,11 +237,25 @@ export const calculateBalanceChange = (
   let totalBalance = 0;
   let balanceDetails = [];
   let hasWon = false;
+  
+  // 获取是否中奖后继续投注的配置
+  let continueBetting = false; // 默认中奖后不继续投注
+  try {
+    if (typeof window !== "undefined") {
+      const storage = safeLocalStorage();
+      const savedContinueBetting = storage.getItem('continueBettingConfig');
+      if (savedContinueBetting) {
+        continueBetting = savedContinueBetting === 'true';
+      }
+    }
+  } catch (e) {
+    console.error("Failed to get continue betting config:", e);
+  }
 
   // 遍历三期开奖结果
   for (let i = 0; i < 3; i++) {
-    // 如果已经中奖，不再继续
-    if (hasWon) break;
+    // 如果已经中奖且配置为不继续投注，则不再继续
+    if (hasWon && !continueBetting) break;
 
     const isWin = checkPeriodMatch(prediction, drawResults[i]);
     
