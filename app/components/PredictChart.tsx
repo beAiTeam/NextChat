@@ -326,7 +326,7 @@ const PredictChart = () => {
 
       return {
         time: timeStr,
-        balance: totalBalance,
+        balance: Math.floor(totalBalance * 100) / 100, // 保留两位小数
       };
     });
 
@@ -371,12 +371,17 @@ const PredictChart = () => {
 
   // 生成详细的盈亏数据
   const generateDetailsData = (items: PredictItem[]) => {
-    return items.map((item) => {
+    let runningBalance = 0; // 记录累计余额
+    
+    return items.map((item, index) => {
       const balanceResult = calculateBalanceChange(
         formatGuessResult(item.guess_result),
         item.ext_result,
         betConfig
       );
+
+      // 更新当前余额
+      runningBalance += balanceResult.balance;
 
       const prediction = formatGuessResult(item.guess_result);
       const date = new Date(item.guess_time * 1000);
@@ -416,6 +421,7 @@ const PredictChart = () => {
         drawNumbers: drawNumbersWithHighlight,
         details: balanceResult.details,
         balance: balanceResult.balance,
+        currentBalance: Math.floor(runningBalance * 100) / 100, // 保留两位小数
       };
     });
   };

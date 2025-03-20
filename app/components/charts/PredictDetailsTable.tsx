@@ -165,6 +165,17 @@ const PredictDetailsTable = ({ detailsData }: PredictDetailsTableProps) => {
         </span>
       ),
     },
+    {
+      title: "当前余额",
+      dataIndex: "currentBalance",
+      key: "currentBalance",
+      width: 100,
+      render: (currentBalance: number) => (
+        <span style={{ fontWeight: "bold" }}>
+          {currentBalance}
+        </span>
+      ),
+    },
   ];
 
   return (

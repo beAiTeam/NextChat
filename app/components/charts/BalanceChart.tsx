@@ -15,7 +15,10 @@ const BalanceChart = ({ balanceData, loading, onViewDetails }: BalanceChartProps
     },
     tooltip: {
       trigger: 'axis' as const,
-      formatter: '{b}<br/>余额: {c}'
+      formatter: function(params: any) {
+        // 余额数值保留 2 位小数
+        return `${params[0].name}<br/>余额: ${params[0].value.toFixed(2)}`;
+      }
     },
     toolbox: {
       feature: {
