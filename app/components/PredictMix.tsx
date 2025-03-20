@@ -672,7 +672,7 @@ const PredictMix = ({}: PredictProps) => {
     setChickenResults(sortedResults);
     
     // 创建请求队列处理函数，最多同时处理4个请求
-    const MAX_CONCURRENT_REQUESTS = 4;
+    const MAX_CONCURRENT_REQUESTS = 8;
     let activeRequests = 0;
     let queueIndex = 0;
     
@@ -714,7 +714,7 @@ const PredictMix = ({}: PredictProps) => {
                 guess_type: modelCombination.defaultModel,
               },
             },
-            2,  // 最多重试2次
+            5,  // 最多重试2次
             6000  // 每次延迟6秒
           );
           
@@ -727,7 +727,7 @@ const PredictMix = ({}: PredictProps) => {
                 guess_type: modelCombination.assistModel,
               },
             },
-            2,  // 最多重试2次
+            5,  // 最多重试2次
             6000  // 每次延迟6秒
           );
           
