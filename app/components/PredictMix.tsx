@@ -5,9 +5,10 @@ import {
   CloseCircleOutlined,
   InfoCircleOutlined,
   LineChartOutlined,
-  ReloadOutlined
+  ReloadOutlined,
+  TrophyOutlined
 } from "@ant-design/icons";
-import { Button, Card, Col, DatePicker, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
+import { Button, Card, Col, DatePicker, Input, Modal, Row, Select, Space, Table, Tag, Tooltip, Typography } from "antd";
 import { Dayjs } from "dayjs";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useRef, useState } from "react";
@@ -104,6 +105,32 @@ const PredictMix = ({}: PredictProps) => {
     defaultModelData: { time: string; value: number }[];
     assistModelData: { time: string; value: number }[];
   }>({ defaultModelData: [], assistModelData: [] });
+  const [isChickenModalVisible, setIsChickenModalVisible] = useState(false);
+  const [chickenDataLimit, setChickenDataLimit] = useState(50);
+  const [chickenResults, setChickenResults] = useState<Array<{
+    defaultModel: LotAiGuessType;
+    assistModel: LotAiGuessType;
+    switchStrategy: number;
+    winRate: string;
+    totalCount: number;
+    winCount: number;
+    currentWinRate?: string;
+    currentTotalCount?: number;
+    currentWinCount?: number;
+    twoWinRate?: string;
+    twoTotalCount?: number;
+    twoWinCount?: number;
+    isLoading: boolean;
+    isComplete: boolean;
+  }>>([]);
+  const [isProcessingChicken, setIsProcessingChicken] = useState(false);
+  const [chickenTableSorter, setChickenTableSorter] = useState<{
+    columnKey: string;
+    order: 'ascend' | 'descend';
+  }>({
+    columnKey: 'winRate',
+    order: 'descend'
+  });
 
   // 添加胜率计算函数
   const calculateWinRates = (items: PredictItem[]) => {
@@ -194,6 +221,22 @@ const PredictMix = ({}: PredictProps) => {
       defaultModelData,
       assistModelData
     });
+  };
+
+  // 添加一个延时函数
+  const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+  // 添加带重试机制的API请求函数
+  const fetchWithRetry = async (url: string, options: any, retries = 2, delayMs = 6000) => {
+    try {
+      return await axiosServices.get(url, options);
+    } catch (error) {
+      if (retries <= 0) throw error;
+      
+      console.log(`请求失败，${delayMs/1000}秒后重试，剩余重试次数: ${retries}`);
+      await delay(delayMs);
+      return fetchWithRetry(url, options, retries - 1, delayMs);
+    }
   };
 
   const fetchData = async (page: number, size: number) => {
@@ -552,6 +595,292 @@ const PredictMix = ({}: PredictProps) => {
     setIsWinStatusModalVisible(true);
   };
 
+  // 处理吃鸡分析
+  const handleChickenAnalysis = async () => {
+    setIsProcessingChicken(true);
+    
+    // 生成所有可能的组合
+    const allModels = Object.values(LotAiGuessType);
+    
+    // 只用于模型组合，不包括策略
+    const modelCombinations: Array<{
+      defaultModel: LotAiGuessType;
+      assistModel: LotAiGuessType;
+    }> = [];
+    
+    // 生成所有模型组合
+    allModels.forEach(defaultModel => {
+      allModels.forEach(assistModel => {
+        if (defaultModel !== assistModel) { // 避免相同模型组合
+          modelCombinations.push({
+            defaultModel,
+            assistModel
+          });
+        }
+      });
+    });
+    
+    // 初始化结果数组 - 包含所有模型组合和切换策略
+    const allStrategyResults: Array<{
+      defaultModel: LotAiGuessType;
+      assistModel: LotAiGuessType;
+      switchStrategy: number;
+      winRate: string;
+      totalCount: number;
+      winCount: number;
+      currentWinRate: string;
+      currentTotalCount: number;
+      currentWinCount: number;
+      twoWinRate: string;
+      twoTotalCount: number;
+      twoWinCount: number;
+      isLoading: boolean;
+      isComplete: boolean;
+    }> = [];
+
+    // 为每个模型组合创建3种切换策略的初始结果
+    modelCombinations.forEach(combination => {
+      [1, 2, 3].forEach(strategy => {
+        allStrategyResults.push({
+          ...combination,
+          switchStrategy: strategy,
+          winRate: '0.00',
+          totalCount: 0,
+          winCount: 0,
+          currentWinRate: '0.00',
+          currentTotalCount: 0,
+          currentWinCount: 0,
+          twoWinRate: '0.00',
+          twoTotalCount: 0,
+          twoWinCount: 0,
+          isLoading: true,
+          isComplete: false
+        });
+      });
+    });
+    
+    // 对结果进行排序，保证完成的在前面，按三期胜率排序
+    const sortedResults = [...allStrategyResults].sort((a, b) => {
+      if (a.isComplete && b.isComplete) {
+        return Number(parseFloat(b.winRate)) - Number(parseFloat(a.winRate));
+      }
+      if (a.isComplete) return -1;
+      if (b.isComplete) return 1;
+      return 0;
+    });
+    
+    setChickenResults(sortedResults);
+    
+    // 创建请求队列处理函数，最多同时处理4个请求
+    const MAX_CONCURRENT_REQUESTS = 4;
+    let activeRequests = 0;
+    let queueIndex = 0;
+    
+    // 使用 Promise 处理队列
+    return new Promise<void>(async (resolve) => {
+      // 处理单个模型组合的函数
+      const processModelCombination = async (index: number) => {
+        if (index >= modelCombinations.length) {
+          // 所有组合都已处理完毕
+          if (activeRequests === 0) {
+            setIsProcessingChicken(false);
+            resolve();
+          }
+          return;
+        }
+        
+        activeRequests++;
+        const modelCombination = modelCombinations[index];
+        
+        try {
+          // 构建参数
+          const params: any = {
+            page: 1,
+            page_size: chickenDataLimit,
+          };
+          
+          // 添加时间范围参数
+          if (timeRange[0] && timeRange[1]) {
+            params.start_time = Math.floor(timeRange[0].valueOf()/1000);
+            params.end_time = Math.floor(timeRange[1].valueOf()/1000);
+          }
+          
+          // 获取默认模型数据 - 使用带重试的请求
+          const defaultResponse = await fetchWithRetry(
+            "/client/lot/get_ai_guess_list",
+            {
+              params: {
+                ...params,
+                guess_type: modelCombination.defaultModel,
+              },
+            },
+            2,  // 最多重试2次
+            6000  // 每次延迟6秒
+          );
+          
+          // 获取配合模型数据 - 使用带重试的请求
+          const assistResponse = await fetchWithRetry(
+            "/client/lot/get_ai_guess_list",
+            {
+              params: {
+                ...params,
+                guess_type: modelCombination.assistModel,
+              },
+            },
+            2,  // 最多重试2次
+            6000  // 每次延迟6秒
+          );
+          
+          // 获取原始数据
+          const defaultData = defaultResponse.data.data.data;
+          const assistData = assistResponse.data.data.data;
+          
+          // 为每种切换策略模拟数据筛选
+          for (let strategyValue = 1; strategyValue <= 3; strategyValue++) {
+            // 针对当前策略进行数据筛选
+            const filteredData: PredictItem[] = [];
+            
+            // 从尾部开始遍历
+            for (let i = defaultData.length - 1; i >= 0; i--) {
+              const defaultItem = defaultData[i];
+              const nextPeriod = defaultItem?.ext_result?.length>0 ? defaultItem.ext_result[0].draw_number: 'empty';
+              const assistItem = assistData.find((item: PredictItem) => item.guess_period === nextPeriod);
+              
+              // 第一条数据（最后一期）使用默认模型
+              if (i === defaultData.length - 1) {
+                filteredData.unshift(defaultItem);
+                continue;
+              }
+              
+              // 获取历史数据来判断是否连续输
+              const loseCount = (() => {
+                let count = 0;
+                for (let j = 0; j < strategyValue; j++) {
+                  if (filteredData.length <= j) break;
+                  const item = filteredData[j];
+                  const prediction = formatGuessResult(item.guess_result);
+                  const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+                  if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
+                    count++;
+                  } else {
+                    break;
+                  }
+                }
+                return count;
+              })();
+              
+              // 如果连续输的次数达到切换策略要求，使用配合模型
+              if (loseCount >= strategyValue && assistItem) {
+                filteredData.unshift(assistItem);
+              } else {
+                filteredData.unshift(defaultItem);
+              }
+            }
+            
+            // 计算胜率
+            const stats = calculateWinRates(filteredData);
+            
+            // 更新结果 - 查找对应的索引
+            const resultIndex = allStrategyResults.findIndex(
+              item => item.defaultModel === modelCombination.defaultModel &&
+                     item.assistModel === modelCombination.assistModel &&
+                     item.switchStrategy === strategyValue
+            );
+            
+            if (resultIndex !== -1) {
+              setChickenResults(prevResults => {
+                const newResults = [...prevResults];
+                newResults[resultIndex] = {
+                  ...newResults[resultIndex],
+                  winRate: stats.three.rate,
+                  totalCount: stats.three.total,
+                  winCount: stats.three.win,
+                  isLoading: false,
+                  isComplete: true,
+                  currentWinRate: stats.current.rate,
+                  currentTotalCount: stats.current.total,
+                  currentWinCount: stats.current.win,
+                  twoWinRate: stats.two.rate,
+                  twoTotalCount: stats.two.total,
+                  twoWinCount: stats.two.win
+                };
+                
+                // 按三期胜率排序
+                return newResults.sort((a, b) => {
+                  if (a.isComplete && b.isComplete) {
+                    return Number(parseFloat(b.winRate)) - Number(parseFloat(a.winRate));
+                  }
+                  if (a.isComplete) return -1;
+                  if (b.isComplete) return 1;
+                  return 0;
+                });
+              });
+            }
+          }
+          
+        } catch (error) {
+          console.error("获取数据失败:", error);
+          // 更新所有相关策略的错误状态
+          for (let strategyValue = 1; strategyValue <= 3; strategyValue++) {
+            const resultIndex = allStrategyResults.findIndex(
+              item => item.defaultModel === modelCombination.defaultModel &&
+                     item.assistModel === modelCombination.assistModel &&
+                     item.switchStrategy === strategyValue
+            );
+            
+            if (resultIndex !== -1) {
+              setChickenResults(prevResults => {
+                const newResults = [...prevResults];
+                newResults[resultIndex] = {
+                  ...newResults[resultIndex],
+                  winRate: '0.00',
+                  totalCount: 0,
+                  winCount: 0,
+                  currentWinRate: '0.00',
+                  currentTotalCount: 0,
+                  currentWinCount: 0,
+                  twoWinRate: '0.00',
+                  twoTotalCount: 0,
+                  twoWinCount: 0,
+                  isLoading: false,
+                  isComplete: true
+                };
+                return newResults;
+              });
+            }
+          }
+        } finally {
+          activeRequests--;
+          
+          // 处理队列中的下一个请求
+          queueIndex++;
+          processModelCombination(queueIndex);
+        }
+      };
+      
+      // 启动初始的并发请求（最多MAX_CONCURRENT_REQUESTS个）
+      const initialBatch = Math.min(MAX_CONCURRENT_REQUESTS, modelCombinations.length);
+      for (let i = 0; i < initialBatch; i++) {
+        processModelCombination(i);
+      }
+      queueIndex = initialBatch - 1; // 队列索引更新为已启动的最后一个请求
+    });
+  };
+  
+  // 选择某个组合
+  const handleSelectCombination = (item: {
+    defaultModel: LotAiGuessType;
+    assistModel: LotAiGuessType;
+    switchStrategy: number;
+  }) => {
+    setDefaultModel(item.defaultModel);
+    setAssistModel(item.assistModel);
+    setSwitchStrategy(item.switchStrategy);
+    setIsChickenModalVisible(false);
+    // 刷新数据
+    fetchData(currentPage, pageSize);
+  };
+
   const columns = [
     {
       title: "期号",
@@ -780,6 +1109,13 @@ const PredictMix = ({}: PredictProps) => {
             </Select>
           </div>
           <div className="predict-controls">
+            <Button
+              icon={<TrophyOutlined />}
+              onClick={() => setIsChickenModalVisible(true)}
+              style={{ marginRight: 8 }}
+            >
+              吃鸡
+            </Button>
             <Button
               icon={<LineChartOutlined />}
               onClick={showWinStatusModal}
@@ -1089,6 +1425,153 @@ const PredictMix = ({}: PredictProps) => {
               opts={{ renderer: 'svg' }}
             />
           </Card>
+        </Modal>
+
+        {/* 吃鸡策略对比模态框 */}
+        <Modal
+          title={
+            <div>
+              <TrophyOutlined style={{ marginRight: "8px", color: "#1890ff" }} />
+              吃鸡策略对比
+            </div>
+          }
+          open={isChickenModalVisible}
+          onCancel={() => setIsChickenModalVisible(false)}
+          footer={null}
+          width={1000}
+          className="chicken-modal"
+        >
+          <div style={{ marginBottom: '16px' }}>
+            <Space>
+              <span>数据量:</span>
+              <Input
+                type="number"
+                value={chickenDataLimit}
+                onChange={(e) => setChickenDataLimit(parseInt(e.target.value) || 50)}
+                style={{ width: '150px' }}
+                min={1}
+                max={5000}
+              />
+              <Button 
+                type="primary" 
+                onClick={handleChickenAnalysis}
+                loading={isProcessingChicken}
+                disabled={isProcessingChicken}
+              >
+                开始分析
+              </Button>
+            </Space>
+            <div style={{ marginTop: '8px', fontSize: '12px', color: '#888' }}>
+              注: 将根据当前选择的时间范围，分析每种组合策略的胜率表现
+            </div>
+          </div>
+
+          <Table
+            dataSource={chickenResults}
+            rowKey={(record) => `${record.defaultModel}-${record.assistModel}-${record.switchStrategy}`}
+            pagination={false}
+            loading={isProcessingChicken && chickenResults.length === 0}
+            scroll={{ y: 500 }}
+            onChange={(pagination, filters, sorter: any) => {
+              // 保存排序状态
+              if (sorter && sorter.columnKey) {
+                setChickenTableSorter({
+                  columnKey: sorter.columnKey,
+                  order: sorter.order
+                });
+              }
+            }}
+            columns={[
+              {
+                title: '默认模型',
+                dataIndex: 'defaultModel',
+                key: 'defaultModel',
+              },
+              {
+                title: '配合模型',
+                dataIndex: 'assistModel',
+                key: 'assistModel',
+              },
+              {
+                title: '切换策略',
+                dataIndex: 'switchStrategy',
+                key: 'switchStrategy',
+                render: (value) => `连输${value}期切换`,
+              },
+              {
+                title: '当期胜率',
+                key: 'currentWinRate',
+                render: (_, record) => {
+                  if (record.isLoading) {
+                    return <span>计算中...</span>;
+                  }
+                  return (
+                    <span style={{ color: '#1890ff' }}>
+                      {record.currentWinRate}%
+                      <span style={{ fontSize: '12px', color: '#8c8c8c', marginLeft: '4px' }}>
+                        ({record.currentWinCount}/{record.currentTotalCount})
+                      </span>
+                    </span>
+                  );
+                },
+                sorter: (a, b) => parseFloat(b.currentWinRate || '0') - parseFloat(a.currentWinRate || '0'),
+                sortOrder: chickenTableSorter.columnKey === 'currentWinRate' ? chickenTableSorter.order : null,
+              },
+              {
+                title: '两期胜率',
+                key: 'twoWinRate',
+                render: (_, record) => {
+                  if (record.isLoading) {
+                    return <span>计算中...</span>;
+                  }
+                  return (
+                    <span style={{ color: '#1890ff' }}>
+                      {record.twoWinRate}%
+                      <span style={{ fontSize: '12px', color: '#8c8c8c', marginLeft: '4px' }}>
+                        ({record.twoWinCount}/{record.twoTotalCount})
+                      </span>
+                    </span>
+                  );
+                },
+                sorter: (a, b) => parseFloat(b.twoWinRate || '0') - parseFloat(a.twoWinRate || '0'),
+                sortOrder: chickenTableSorter.columnKey === 'twoWinRate' ? chickenTableSorter.order : null,
+              },
+              {
+                title: '三期胜率',
+                key: 'winRate',
+                render: (_, record) => {
+                  if (record.isLoading) {
+                    return <span>计算中...</span>;
+                  }
+                  return (
+                    <span style={{ color: '#1890ff' }}>
+                      {record.winRate}%
+                      <span style={{ fontSize: '12px', color: '#8c8c8c', marginLeft: '4px' }}>
+                        ({record.winCount}/{record.totalCount})
+                      </span>
+                    </span>
+                  );
+                },
+                sorter: (a, b) => parseFloat(b.winRate || '0') - parseFloat(a.winRate || '0'),
+                sortOrder: chickenTableSorter.columnKey === 'winRate' ? chickenTableSorter.order : null,
+                defaultSortOrder: 'descend',
+              },
+              {
+                title: '操作',
+                key: 'action',
+                render: (_, record) => (
+                  <Button 
+                    type="primary" 
+                    size="small"
+                    onClick={() => handleSelectCombination(record)}
+                    disabled={record.isLoading}
+                  >
+                    选择
+                  </Button>
+                ),
+              },
+            ]}
+          />
         </Modal>
       </div>
     </MainLayout>
