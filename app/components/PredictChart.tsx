@@ -1,7 +1,6 @@
 "use client";
 
-import { Card, Input, Select, Space, Spin } from "antd";
-import ReactECharts from 'echarts-for-react';
+import { Input, Modal, Select, Space } from "antd";
 import { useEffect, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import {
@@ -12,8 +11,16 @@ import {
   checkTwoPeriodsMatch,
   DrawResult,
   formatGuessResult,
-  GuessResult,
+  GuessResult
 } from "../utils/predict-utils";
+import {
+  BalanceChart,
+  HeatmapChart,
+  PredictDetailsTable,
+  WeeklyChart,
+  WinLoseChart,
+  WinRateChart
+} from "./charts";
 import MainLayout from "./Layout";
 import "./PredictChart.scss";
 import PredictStats from "./PredictStats";
@@ -52,6 +59,8 @@ const PredictChart = () => {
     }
   });
   const [balanceData, setBalanceData] = useState<any[]>([]);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
+  const [detailsData, setDetailsData] = useState<any[]>([]);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -360,6 +369,64 @@ const PredictChart = () => {
     setGuessType(value);
   };
 
+  // 生成详细的盈亏数据
+  const generateDetailsData = (items: PredictItem[]) => {
+    return items.map((item) => {
+      const balanceResult = calculateBalanceChange(
+        formatGuessResult(item.guess_result),
+        item.ext_result,
+        betConfig
+      );
+
+      const prediction = formatGuessResult(item.guess_result);
+      const date = new Date(item.guess_time * 1000);
+
+      // 处理开奖号码和中奖号码的高亮
+      const drawNumbersWithHighlight = item.ext_result?.map(result => {
+        const numbers = result.full_number.split('');
+        const firstDigitOfPrediction = prediction[0];
+        const lastFourDigits = prediction.slice(1).split('');
+        
+        // 检查第一位是否匹配
+        const isFirstDigitMatched = numbers.includes(firstDigitOfPrediction);
+        // 创建一个新的数组，排除掉第一位匹配的数字
+        const remainingDigits = numbers.filter(digit => digit !== firstDigitOfPrediction);
+        // 找到匹配的后四位数字
+        const matchedLastDigits = lastFourDigits.filter(digit => remainingDigits.includes(digit));
+
+        // 为每个数字添加高亮标记
+        const highlightedNumbers = numbers.map(num => {
+          if (num === firstDigitOfPrediction && isFirstDigitMatched) {
+            return { number: num, highlight: true };
+          }
+          if (matchedLastDigits.includes(num)) {
+            return { number: num, highlight: true };
+          }
+          return { number: num, highlight: false };
+        });
+
+        return highlightedNumbers;
+      }) || [];
+
+      return {
+        key: item._id,
+        time: date.toLocaleString("zh-CN"),
+        period: item.guess_period,
+        prediction: prediction,
+        drawNumbers: drawNumbersWithHighlight,
+        details: balanceResult.details,
+        balance: balanceResult.balance,
+      };
+    });
+  };
+
+  // 处理查看详情按钮点击
+  const handleViewDetails = () => {
+    const sortedItems = [...data].sort((a, b) => a.guess_time - b.guess_time);
+    setDetailsData(generateDetailsData(sortedItems));
+    setIsDetailsVisible(true);
+  };
+
   // 处理倍投配置变化
   const handleBetConfigChange = (key: 'x' | 'y' | 'z', value: string) => {
     // 确保输入为正数，且不超过100
@@ -371,353 +438,17 @@ const PredictChart = () => {
     } catch (error) {
       console.error('Failed to save bet config:', error);
     }
-    // 重新获取数据
-    fetchWeeklyData();
+    // 不需要重新获取数据，只需要重新计算余额数据
+    processChartData(data, winType);
   };
 
   useEffect(() => {
     fetchWeeklyData();
-  }, [guessType, winType, betConfig]);
+  }, [guessType, winType]);
 
   useEffect(() => {
     processChartData(data, winType);
-  }, [winType, betConfig]);
-
-  const weeklyOption = {
-    title: {
-      text: '最近一周每日胜率',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis' as const,
-      formatter: function(params: any) {
-        let result = params[0].name + '<br/>';
-        params.forEach((param: any) => {
-          const data = param.data;
-          const color = param.color;
-          const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${color};"></span>`;
-          if (param.seriesIndex === 0) {
-            result += `${marker}全天: ${data}%（样本: ${param.data.count}）<br/>`;
-          } else if (param.seriesIndex === 1) {
-            result += `${marker}白天: ${data}%（样本: ${param.data.count}）<br/>`;
-          } else if (param.seriesIndex === 2) {
-            result += `${marker}晚上: ${data}%（样本: ${param.data.count}）<br/>`;
-          }
-        });
-        return result;
-      }
-    },
-    legend: {
-      data: ['全天', '白天', '晚上'],
-      top: '30px'
-    },
-    grid: {
-      top: '80px',
-      bottom: '10%',
-      left: '10%',
-      right: '10%'
-    },
-    xAxis: {
-      type: 'category' as const,
-      data: weeklyChartData.map(item => item.date),
-      axisLabel: {
-        rotate: 0
-      }
-    },
-    yAxis: {
-      type: 'value' as const,
-      min: winType === "any" ? 50 : winType === "two" ? 40 : 0,
-      max: 100,
-      name: '胜率(%)',
-      splitLine: {
-        show: true,
-        lineStyle: {
-          type: 'dashed' as const
-        }
-      }
-    },
-    series: [
-      {
-        name: '全天',
-        type: 'bar' as const,
-        data: weeklyChartData.map(item => ({
-          value: item.allDay.winRate,
-          count: item.allDay.count
-        })),
-        itemStyle: {
-          color: '#2593fc'
-        },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}%'
-        }
-      },
-      {
-        name: '白天',
-        type: 'bar' as const,
-        data: weeklyChartData.map(item => ({
-          value: item.dayTime.winRate,
-          count: item.dayTime.count
-        })),
-        itemStyle: {
-          color: '#52c41a'
-        },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}%'
-        }
-      },
-      {
-        name: '晚上',
-        type: 'bar' as const,
-        data: weeklyChartData.map(item => ({
-          value: item.nightTime.winRate,
-          count: item.nightTime.count
-        })),
-        itemStyle: {
-          color: '#ff4d4f'
-        },
-        label: {
-          show: true,
-          position: 'top',
-          formatter: '{c}%'
-        }
-      }
-    ]
-  };
-
-  const winRateOption = {
-    title: {
-      text: '胜率趋势',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis' as const,
-      formatter: '{b}<br/>胜率: {c}%'
-    },
-    xAxis: {
-      type: 'category' as const,
-      data: chartData.map(item => item.time),
-      axisLabel: {
-        rotate: 45,
-        interval: Math.floor(chartData.length / 10)
-      }
-    },
-    yAxis: {
-      type: 'value' as const,
-      min: winType === "any" ? 50 : winType === "two" ? 40 : 0,
-      max: 100,
-      name: '胜率(%)',
-      splitLine: {
-        show: true,
-        lineStyle: {
-          type: 'dashed' as const
-        }
-      }
-    },
-    series: [{
-      data: chartData.map(item => item.winRate),
-      type: 'line' as const,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 8,
-      itemStyle: {
-        color: '#2593fc'
-      },
-      lineStyle: {
-        width: 2
-      },
-      markLine: {
-        silent: true,
-        symbol: 'none',
-
-        data: [
-          {
-            yAxis: 70,
-            lineStyle: {
-              color: '#ff4d4f',
-              width: 2,
-              type: 'solid' as const
-            }
-          }
-        ]
-      }
-    }]
-  };
-
-  const winLoseOption = {
-    title: {
-      text: '中奖状态',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis' as const,
-      formatter: function(params: any) {
-        const value = params[0].value;
-        return `${params[0].name}<br/>${value > 0 ? '中奖' : '未中奖'}`;
-      }
-    },
-    xAxis: {
-      type: 'category' as const,
-      data: winLoseData.map(item => item.time),
-      axisLabel: {
-        rotate: 45,
-        interval: Math.floor(winLoseData.length / 10)
-      }
-    },
-    yAxis: {
-      type: 'value' as const,
-      min: -2,
-      max: 2,
-      interval: 1,
-      axisLabel: {
-        formatter: function(value: number) {
-          if (value === 1) return '中奖';
-          if (value === -1) return '未中奖';
-          return '';
-        }
-      }
-    },
-    series: [{
-      data: winLoseData.map(item => item.value),
-      type: 'line' as const,
-      step: 'middle' as const,
-      symbol: 'circle',
-      symbolSize: 8,
-      itemStyle: {
-        color: function(params: any) {
-          return params.data > 0 ? '#52c41a' : '#ff4d4f';
-        }
-      },
-      lineStyle: {
-        width: 2
-      }
-    }],
-    grid: {
-      left: '10%',
-      right: '10%',
-      bottom: '15%'
-    }
-  };
-
-  const heatmapOption = {
-    title: {
-      text: '开奖状态热力图',
-      left: 'center'
-    },
-    tooltip: {
-      position: 'top' as const,
-      formatter: function (params: any) {
-        return `时间: ${params.data[0]}时 第${params.data[1] + 1}期<br/>状态: ${params.data[2] ? '中奖' : '未中奖'}`;
-      }
-    },
-    grid: {
-      top: '60px',
-      bottom: '10%',
-      left: '10%',
-      right: '10%'
-    },
-    xAxis: {
-      type: 'category' as const,
-      data: Array.from({ length: 24 }, (_, i) => `${i}时`),
-      splitArea: {
-        show: true
-      }
-    },
-    yAxis: {
-      type: 'category' as const,
-      data: Array.from({ length: 12 }, (_, i) => `${i + 1}期`),
-      splitArea: {
-        show: true
-      }
-    },
-    visualMap: {
-      min: 0,
-      max: 1,
-      calculable: false,
-      orient: 'horizontal' as const,
-      left: 'center',
-      bottom: '0%',
-      inRange: {
-        color: ['#dcdcdc', '#52c41a']
-      },
-      textStyle: {
-        color: '#333'
-      }
-    },
-    series: [{
-      name: '开奖状态',
-      type: 'heatmap' as const,
-      data: heatmapData,
-      label: {
-        show: false
-      },
-      emphasis: {
-        itemStyle: {
-          shadowBlur: 10,
-          shadowColor: 'rgba(0, 0, 0, 0.5)'
-        }
-      }
-    }]
-  };
-
-  const balanceOption = {
-    title: {
-      text: '余额变化趋势',
-      left: 'center'
-    },
-    tooltip: {
-      trigger: 'axis' as const,
-      formatter: '{b}<br/>余额: {c}'
-    },
-    xAxis: {
-      type: 'category' as const,
-      data: balanceData.map(item => item.time),
-      axisLabel: {
-        rotate: 45,
-        interval: Math.floor(balanceData.length / 10)
-      }
-    },
-    yAxis: {
-      type: 'value' as const,
-      name: '余额',
-      splitLine: {
-        show: true,
-        lineStyle: {
-          type: 'dashed' as const
-        }
-      }
-    },
-    series: [{
-      data: balanceData.map(item => item.balance),
-      type: 'line' as const,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 8,
-      itemStyle: {
-        color: '#2593fc'
-      },
-      lineStyle: {
-        width: 2
-      },
-      markLine: {
-        silent: true,
-        symbol: 'none',
-        data: [
-          {
-            yAxis: 0,
-            lineStyle: {
-              color: '#ff4d4f',
-              width: 2,
-              type: 'solid' as const
-            }
-          }
-        ]
-      }
-    }]
-  };
+  }, [winType, betConfig, data]);
 
   return (
       <MainLayout>
@@ -774,60 +505,43 @@ const PredictChart = () => {
                 defaultWinType={winType}
             />
 
-            <Card>
-              <Spin spinning={loading}>
-                <ReactECharts
-                    option={balanceOption}
-                    style={{ height: '400px' }}
-                    notMerge={true}
-                    opts={{ renderer: 'svg' }}
-                />
-              </Spin>
-            </Card>
+            <BalanceChart 
+              balanceData={balanceData}
+              loading={loading}
+              onViewDetails={handleViewDetails}
+            />
+            
+            <WinRateChart 
+              chartData={chartData}
+              loading={loading}
+              winType={winType}
+            />
+            
+            <WeeklyChart 
+              weeklyChartData={weeklyChartData}
+              loading={loading}
+              winType={winType}
+            />
+            
+            <WinLoseChart 
+              winLoseData={winLoseData}
+              loading={loading}
+            />
+            
+            <HeatmapChart 
+              heatmapData={heatmapData}
+              loading={loading}
+            />
 
-            <Card>
-              <Spin spinning={loading}>
-                <ReactECharts
-                    option={winRateOption}
-                    style={{ height: '400px' }}
-                    notMerge={true}
-                    opts={{ renderer: 'svg' }}
-                />
-              </Spin>
-            </Card>
-
-            <Card title="最近一周每日胜率">
-              <Spin spinning={loading}>
-                <ReactECharts
-                    option={weeklyOption}
-                    style={{ height: '400px' }}
-                    notMerge={true}
-                    opts={{ renderer: 'svg' }}
-                />
-              </Spin>
-            </Card>
-
-            <Card>
-              <Spin spinning={loading}>
-                <ReactECharts
-                    option={winLoseOption}
-                    style={{ height: '400px' }}
-                    notMerge={true}
-                    opts={{ renderer: 'svg' }}
-                />
-              </Spin>
-            </Card>
-
-            <Card>
-              <Spin spinning={loading}>
-                <ReactECharts
-                    option={heatmapOption}
-                    style={{ height: '400px' }}
-                    notMerge={true}
-                    opts={{ renderer: 'svg' }}
-                />
-              </Spin>
-            </Card>
+            <Modal
+              title="盈亏详情"
+              open={isDetailsVisible}
+              onCancel={() => setIsDetailsVisible(false)}
+              width={1200}
+              footer={null}
+            >
+              <PredictDetailsTable detailsData={detailsData} />
+            </Modal>
           </Space>
         </div>
       </MainLayout>

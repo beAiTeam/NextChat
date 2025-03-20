@@ -11,4 +11,35 @@
   .ant-space {
     width: 100%;
   }
+
+  .digit {
+    display: inline-block;
+    padding: 0 2px;
+    border-radius: 2px;
+    margin: 0 1px;
+    min-width: 14px;
+    text-align: center;
+  }
+  
+  .highlighted-digit {
+    color: #52c41a;
+    font-weight: bold;
+    background-color: rgba(82, 196, 26, 0.1);
+    padding: 0 2px;
+    border-radius: 2px;
+    margin: 0 1px;
+    min-width: 14px;
+    text-align: center;
+  }
+  
+  .highlighted-digit-gold {
+    color: #f5222d;
+    font-weight: bold;
+    background-color: rgba(245, 34, 45, 0.1);
+    padding: 0 2px;
+    border-radius: 2px;
+    margin: 0 1px;
+    min-width: 14px;
+    text-align: center;
+  }
 } 
