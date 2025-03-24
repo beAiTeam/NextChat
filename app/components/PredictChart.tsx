@@ -61,6 +61,7 @@ const PredictChart = () => {
   const [balanceData, setBalanceData] = useState<any[]>([]);
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const [detailsData, setDetailsData] = useState<any[]>([]);
+  const [beforeData, setBeforeData] = useState<PredictItem[]>([]);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -239,13 +240,34 @@ const PredictChart = () => {
     items: PredictItem[],
     currentWinType: "current" | "two" | "any",
   ) => {
+    if (!beforeData?.length) {
+      return;
+    }
+    console.log("beforeData", beforeData);
     // 按时间排序
     const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
-
+    const sumLen = sortedItems.length; // 应该是100
     // 生成胜率图表数据
     const chartData = sortedItems.map((item, index) => {
       // 计算到当前项为止的所有数据的胜率
-      const currentItems = sortedItems.slice(0, index + 1);
+      let currentItems = sortedItems.slice(0, index + 1);
+      if (beforeData?.length > 0) {
+        // 我们需要保持总数为 sumLen (100条)
+        // 从 beforeData 中取 (sumLen - currentItems.length) 条数据
+        const needCount = sumLen - currentItems.length;
+        if (needCount > 0) {
+          // 从 beforeData 中取数据，跳过第一条，从后往前取
+          // clone
+          const cloneBeforeData = JSON.parse(JSON.stringify(beforeData));
+          // reverse
+          const reverseBeforeData = cloneBeforeData.reverse();
+          // slice
+          const startIndex = Math.max(reverseBeforeData.length - needCount, 1);
+          const relevantBeforeData = reverseBeforeData.slice(startIndex);
+          currentItems = [...relevantBeforeData, ...currentItems];
+        }
+      }
+      console.log("currentItems", currentItems);
       const winRate = calculateWinRate(currentItems, currentWinType);
 
       const date = new Date(item.guess_time * 1000);
@@ -336,6 +358,8 @@ const PredictChart = () => {
       };
     });
 
+    console.log("chartData", chartData);
+
     setBalanceData(balanceData);
     setChartData(chartData);
     setWinLoseData(winLoseData);
@@ -361,8 +385,12 @@ const PredictChart = () => {
     return (winCount / validItems.length) * 100;
   };
 
-  const handleDataChange = (newData: PredictItem[]) => {
+  const handleDataChange = (
+    newData: PredictItem[],
+    beforeData: PredictItem[],
+  ) => {
     setData(newData);
+    setBeforeData(beforeData);
     processChartData(newData, winType);
   };
 
@@ -481,7 +509,7 @@ const PredictChart = () => {
   }, [guessType, winType]);
 
   useEffect(() => {
-    processChartData(data, winType);
+    processChartData(data, winType, beforeData);
   }, [winType, betConfig, data]);
 
   return (

@@ -138,7 +138,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       try {
         const params: any = {
           page: 1,
-          page_size: size,
+          page_size: size * 2,
           guess_type: guess_type,
         };
 
@@ -149,6 +149,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
         }
 
         let newData;
+        let beforeData;
         if (isCompare) {
           newData = await fetchCompareData(params);
         } else {
@@ -160,11 +161,15 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
           );
           newData = response.data.data.data;
         }
+        const originData = newData;
+
+        newData = originData.slice(0, size);
+        beforeData = originData.slice(size, originData.length);
 
         console.log("newData", newData);
-
+        console.log("beforeData", beforeData);
         setData(newData);
-        onDataChange?.(newData);
+        onDataChange?.(newData, beforeData);
       } catch (error) {
         console.error("获取数据失败:", error);
       } finally {
@@ -296,6 +301,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
               }
             }}
             options={[
+              { value: "5", label: "5条" },
               { value: "10", label: "10条" },
               { value: "50", label: "50条" },
               { value: "100", label: "100条" },
