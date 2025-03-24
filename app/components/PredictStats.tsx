@@ -34,6 +34,10 @@ interface PredictStatsProps {
   onTimeRangeChange?: (timeRange: [Dayjs | null, Dayjs | null]) => void;
   defaultPageSize?: number;
   defaultWinType?: "current" | "two" | "any";
+  isCompare?: boolean;
+  baseGuessType?: string;
+  compareGuessType?: string;
+  switchStrategy?: number;
 }
 
 export interface PredictStatsRef {
@@ -48,6 +52,10 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       onDataChange,
       onWinTypeChange,
       onTimeRangeChange,
+      isCompare,
+      compareGuessType,
+      baseGuessType,
+      switchStrategy,
       defaultPageSize = 100,
       defaultWinType = "current",
     },
@@ -59,7 +67,10 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
     const [winType, setWinType] = useState<"current" | "two" | "any">(
       defaultWinType,
     );
-    const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
+    const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([
+      null,
+      null,
+    ]);
 
     // 检查当期是否中奖
     const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -100,16 +111,17 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       // 根据不同的winType筛选有效数据
       const validItems = items.filter((item) => {
         if (!item.ext_result || !item.guess_result) return false;
-        
+
         if (winType === "current") {
           return item.ext_result.length > 0;
         } else if (winType === "two") {
           return item.ext_result.length >= 2;
-        } else { // winType === "any" (三期)
+        } else {
+          // winType === "any" (三期)
           return item.ext_result.length >= 3;
         }
       });
-      
+
       if (validItems.length === 0) return 0;
 
       const winCount = validItems.filter((item) => {
@@ -132,17 +144,25 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
 
         // 添加时间范围参数
         if (timeRange[0] && timeRange[1]) {
-          params.start_time = Math.floor(timeRange[0].valueOf()/1000);
-          params.end_time = Math.floor(timeRange[1].valueOf()/1000);
+          params.start_time = Math.floor(timeRange[0].valueOf() / 1000);
+          params.end_time = Math.floor(timeRange[1].valueOf() / 1000);
         }
 
-        const response = await axiosServices.get(
-          "/client/lot/get_ai_guess_list",
-          {
-            params,
-          },
-        );
-        const newData = response.data.data.data;
+        let newData;
+        if (isCompare) {
+          newData = await fetchCompareData(params);
+        } else {
+          const response = await axiosServices.get(
+            "/client/lot/get_ai_guess_list",
+            {
+              params,
+            },
+          );
+          newData = response.data.data.data;
+        }
+
+        console.log("newData", newData);
+
         setData(newData);
         onDataChange?.(newData);
       } catch (error) {
@@ -152,6 +172,77 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
       }
     };
 
+    const fetchCompareData = async (params: any) => {
+      // 获取默认模型数据
+      const defaultResponse = await axiosServices.get(
+        "/client/lot/get_ai_guess_list",
+        {
+          params: {
+            ...params,
+            guess_type: baseGuessType,
+          },
+        },
+      );
+
+      // 获取配合模型数据
+      const assistResponse = await axiosServices.get(
+        "/client/lot/get_ai_guess_list",
+        {
+          params: {
+            ...params,
+            guess_type: compareGuessType,
+          },
+        },
+      );
+      // 数据筛选逻辑
+      const defaultData = defaultResponse.data.data.data;
+      const assistData = assistResponse.data.data.data;
+      const filteredData: PredictItem[] = [];
+
+      // 从尾部开始遍历
+      for (let i = defaultData.length - 1; i >= 0; i--) {
+        const defaultItem = defaultData[i];
+        const nextPeriod =
+          defaultItem?.ext_result?.length > 0
+            ? defaultItem.ext_result[0].draw_number
+            : "empty";
+        const assistItem = assistData.find(
+          (item: PredictItem) => item.guess_period === nextPeriod,
+        );
+
+        // 第一条数据（最后一期）使用默认模型
+        if (i === defaultData.length - 1) {
+          filteredData.unshift(defaultItem);
+          continue;
+        }
+
+        // 获取历史数据来判断是否连续输
+        const loseCount = (() => {
+          let count = 0;
+          for (let j = 0; j < switchStrategy; j++) {
+            if (filteredData.length <= j) break;
+            const item = filteredData[j];
+            const prediction = formatGuessResult(item.guess_result);
+            const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+            if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
+              count++;
+            } else {
+              break;
+            }
+          }
+          return count;
+        })();
+
+        // 如果连续输的次数达到切换策略要求，使用配合模型
+        if (loseCount >= switchStrategy && assistItem) {
+          filteredData.unshift(assistItem);
+        } else {
+          filteredData.unshift(defaultItem);
+        }
+      }
+      return filteredData;
+    };
+
     useImperativeHandle(ref, () => ({
       refresh: () => fetchData(pageSize),
       getTimeRange: () => timeRange,
@@ -159,7 +250,14 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
 
     useEffect(() => {
       fetchData(pageSize);
-    }, [pageSize, timeRange]);
+    }, [
+      pageSize,
+      timeRange,
+      isCompare,
+      baseGuessType,
+      compareGuessType,
+      switchStrategy,
+    ]);
 
     // 监听guess_type变化，重新获取数据
     useEffect(() => {
@@ -190,7 +288,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
           <span>数据量：</span>
           <Select
             value={String(pageSize)}
-            style={{width: 90}}
+            style={{ width: 90 }}
             onChange={(value: string) => {
               const size = parseInt(value);
               if (!isNaN(size) && size > 0) {
@@ -218,7 +316,7 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
               }
             }}
           />
-          
+
           <Radio.Group value={winType} onChange={handleWinTypeChange}>
             <Radio.Button value="current">当期</Radio.Button>
             <Radio.Button value="two">两期</Radio.Button>
@@ -226,23 +324,25 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
           </Radio.Group>
 
           <RangePicker
-            showTime={{ format: 'HH:mm' }}
+            showTime={{ format: "HH:mm" }}
             format="YYYY-MM-DD HH:mm"
             onChange={handleTimeRangeChange}
-            style={{ minWidth: '300px' }}
+            style={{ minWidth: "300px" }}
           />
-          
+
           <span>
             {pageSize}条胜率：
             {loading ? (
               <Spin size="small" />
             ) : (
-              `${calculateWinRate(data).toFixed(2)}%（有效数据：${data.filter(item => {
-                if (!item.ext_result || !item.guess_result) return false;
-                if (winType === "current") return item.ext_result.length > 0;
-                if (winType === "two") return item.ext_result.length >= 2;
-                return item.ext_result.length >= 3;
-              }).length}条）`
+              `${calculateWinRate(data).toFixed(2)}%（有效数据：${
+                data.filter((item) => {
+                  if (!item.ext_result || !item.guess_result) return false;
+                  if (winType === "current") return item.ext_result.length > 0;
+                  if (winType === "two") return item.ext_result.length >= 2;
+                  return item.ext_result.length >= 3;
+                }).length
+              }条）`
             )}
           </span>
         </Space>
@@ -251,6 +351,6 @@ const PredictStats = forwardRef<PredictStatsRef, PredictStatsProps>(
   },
 );
 
-PredictStats.displayName = 'PredictStats';
+PredictStats.displayName = "PredictStats";
 
 export default PredictStats;
