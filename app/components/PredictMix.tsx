@@ -313,9 +313,17 @@ const PredictMix = ({}: PredictProps) => {
       // 从尾部开始遍历
       for (let i = defaultData.length - 1; i >= 0; i--) {
         const defaultItem = defaultData[i];
-        const nextPeriod = defaultItem?.ext_result?.length>0 ? defaultItem.ext_result[0].draw_number: 'empty';
+        const nextPeriod = defaultItem?.ext_result?.length>0 ? defaultItem.ext_result[0].draw_number: defaultItem.guess_period;
         const assistItem = assistData.find((item: PredictItem) => item.guess_period === nextPeriod);
         
+        // 第一条数据（最后一期）使用默认模型
+        if (i === defaultData.length - 1) {
+          filteredData.unshift(defaultItem);
+          continue;
+        }
+
+        
+
         // 获取历史数据来判断是否连续输
         const loseCount = (() => {
           // 如果切换策略是1，只需要判断上一期是否失败
