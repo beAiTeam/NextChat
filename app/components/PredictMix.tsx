@@ -835,7 +835,7 @@ const PredictMix = ({}: PredictProps) => {
               onChange={(value) => setSwitchStrategy(value)}
               placeholder="选择切换策略"
             >
-              <Select.Option value={1}>连输1期切换</Select.Option>
+              <Select.Option value={1}>输1期切换</Select.Option>
               <Select.Option value={2}>连输2期切换</Select.Option>
               <Select.Option value={3}>连输3期切换</Select.Option>
               <Select.Option value={4}>连输4期切换</Select.Option>
@@ -883,7 +883,7 @@ const PredictMix = ({}: PredictProps) => {
               style={{ minWidth: '300px' }}
             />
           </Space>
-          <span style={{marginLeft: '10px'}}>【按3期状态来决定下期采用哪个模型预测】</span>
+          <span style={{marginLeft: '10px'}}>【按当期状态来决定下期采用哪个模型预测】</span>
         </div>
 
         <div className="predict-table-container">
