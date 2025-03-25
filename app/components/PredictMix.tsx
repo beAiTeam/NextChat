@@ -113,7 +113,7 @@ const PredictMix = ({}: PredictProps) => {
     columnKey: string;
     order: 'ascend' | 'descend';
   }>({
-    columnKey: 'winRate',
+    columnKey: 'currentWinRate',
     order: 'descend'
   });
 
@@ -1507,7 +1507,6 @@ const PredictMix = ({}: PredictProps) => {
                 },
                 sorter: (a, b) => Number(parseFloat(b.winRate)) - Number(parseFloat(a.winRate)),
                 sortOrder: chickenTableSorter.columnKey === 'winRate' ? chickenTableSorter.order : null,
-                defaultSortOrder: 'descend',
               },
               {
                 title: '操作',
