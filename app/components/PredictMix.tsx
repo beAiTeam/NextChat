@@ -299,7 +299,7 @@ const PredictMix = ({}: PredictProps) => {
             if (filteredData.length <= j) break;
             const item = filteredData[j];
             const prediction = formatGuessResult(item.guess_result);
-            const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+            const isLose = !checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period);
             if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
               count++;
             } else {
@@ -712,7 +712,7 @@ const PredictMix = ({}: PredictProps) => {
       
       // 为每个模型组合创建3种切换策略的初始结果
       modelCombinations.forEach(combination => {
-        [1, 2, 3].forEach(strategy => {
+        [1, 2, 3, 4, 5, 6].forEach(strategy => {
           allStrategyResults.push({
             ...combination,
             switchStrategy: strategy,
@@ -762,7 +762,7 @@ const PredictMix = ({}: PredictProps) => {
               if (filteredData.length <= j) break;
               const item = filteredData[j];
               const prediction = formatGuessResult(item.guess_result);
-              const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+              const isLose = !checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period);
               if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
                 count++;
               } else {
@@ -1048,6 +1048,9 @@ const PredictMix = ({}: PredictProps) => {
               <Select.Option value={1}>连输1期切换</Select.Option>
               <Select.Option value={2}>连输2期切换</Select.Option>
               <Select.Option value={3}>连输3期切换</Select.Option>
+              <Select.Option value={4}>连输4期切换</Select.Option>
+              <Select.Option value={5}>连输5期切换</Select.Option>
+              <Select.Option value={6}>连输6期切换</Select.Option>
             </Select>
           </div>
           <div className="predict-controls">
