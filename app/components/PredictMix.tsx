@@ -67,27 +67,12 @@ interface PredictProps {}
 
 const PredictMix = ({}: PredictProps) => {
   const localStorage = safeLocalStorage();
+  const hasLoadedFromStorage = useRef(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [defaultModel, setDefaultModel] = useState<LotAiGuessType>(() => {
-    // 尝试从localStorage读取保存的默认模型
-    const savedDefaultModel = localStorage.getItem("predict_default_model");
-    return savedDefaultModel ? savedDefaultModel as LotAiGuessType : LotAiGuessType.Ai5_Normal;
-  });
-  const [assistModel, setAssistModel] = useState<LotAiGuessType>(() => {
-    // 尝试从localStorage读取保存的配合模型
-    const savedAssistModel = localStorage.getItem("predict_assist_model");
-    return savedAssistModel ? savedAssistModel as LotAiGuessType : LotAiGuessType.Ai5_Gemini_Plus;
-  });
-  const [switchStrategy, setSwitchStrategy] = useState<number>(() => {
-    // 尝试从localStorage读取保存的切换策略
-    const savedStrategy = localStorage.getItem("predict_switch_strategy");
-    return savedStrategy ? parseInt(savedStrategy) : 2;
-  });
-  const [pageSize, setPageSize] = useState(() => {
-    // 尝试从localStorage读取保存的pageSize
-    const savedPageSize = localStorage.getItem("predict_page_size");
-    return savedPageSize ? parseInt(savedPageSize) : 100;
-  });
+  const [defaultModel, setDefaultModel] = useState<LotAiGuessType>(LotAiGuessType.Ai5_Normal);
+  const [assistModel, setAssistModel] = useState<LotAiGuessType>(LotAiGuessType.Ai5_Gemini_Plus);
+  const [switchStrategy, setSwitchStrategy] = useState<number>(2);
+  const [pageSize, setPageSize] = useState(100);
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState<PredictItem[]>([]);
   const [total, setTotal] = useState(0);
@@ -128,9 +113,52 @@ const PredictMix = ({}: PredictProps) => {
     columnKey: string;
     order: 'ascend' | 'descend';
   }>({
-    columnKey: 'winRate',
+    columnKey: 'currentWinRate',
     order: 'descend'
   });
+
+  // 从localStorage读取保存的设置
+  useEffect(() => {
+    if (hasLoadedFromStorage.current) return;
+    
+    const savedDefaultModel = localStorage.getItem("predict_default_model");
+    const savedAssistModel = localStorage.getItem("predict_assist_model");
+    const savedStrategy = localStorage.getItem("predict_switch_strategy");
+    const savedPageSize = localStorage.getItem("predict_page_size");
+
+    console.log("load savedDefaultModel", savedDefaultModel);
+    if (savedDefaultModel) {
+      setDefaultModel(savedDefaultModel as LotAiGuessType);
+    }
+    if (savedAssistModel) {
+      setAssistModel(savedAssistModel as LotAiGuessType);
+    }
+    if (savedStrategy) {
+      setSwitchStrategy(parseInt(savedStrategy));
+    }
+    if (savedPageSize) {
+      setPageSize(parseInt(savedPageSize));
+    }
+    
+    hasLoadedFromStorage.current = true;
+  }, []); // 只在组件挂载时读取一次
+
+  // 当设置变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem("predict_default_model", defaultModel);
+  }, [defaultModel]);
+
+  useEffect(() => {
+    localStorage.setItem("predict_assist_model", assistModel);
+  }, [assistModel]);
+
+  useEffect(() => {
+    localStorage.setItem("predict_switch_strategy", switchStrategy.toString());
+  }, [switchStrategy]);
+
+  useEffect(() => {
+    localStorage.setItem("predict_page_size", pageSize.toString());
+  }, [pageSize]);
 
   // 添加胜率计算函数
   const calculateWinRates = (items: PredictItem[]) => {
@@ -299,7 +327,7 @@ const PredictMix = ({}: PredictProps) => {
             if (filteredData.length <= j) break;
             const item = filteredData[j];
             const prediction = formatGuessResult(item.guess_result);
-            const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+            const isLose = !checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period);
             if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
               count++;
             } else {
@@ -332,26 +360,6 @@ const PredictMix = ({}: PredictProps) => {
   useEffect(() => {
     fetchData(currentPage, pageSize);
   }, [currentPage, pageSize, timeRange, defaultModel, assistModel,switchStrategy]);
-
-  // 当pageSize变化时保存到localStorage
-  useEffect(() => {
-    localStorage.setItem("predict_page_size", pageSize.toString());
-  }, [pageSize]);
-
-  // 当switchStrategy变化时保存到localStorage
-  useEffect(() => {
-    localStorage.setItem("predict_switch_strategy", switchStrategy.toString());
-  }, [switchStrategy]);
-
-  // 当defaultModel变化时保存到localStorage
-  useEffect(() => {
-    localStorage.setItem("predict_default_model", defaultModel);
-  }, [defaultModel]);
-
-  // 当assistModel变化时保存到localStorage
-  useEffect(() => {
-    localStorage.setItem("predict_assist_model", assistModel);
-  }, [assistModel]);
 
   // 处理时间范围变化
   const handleTimeRangeChange = (newTimeRange: [Dayjs | null, Dayjs | null]) => {
@@ -712,7 +720,7 @@ const PredictMix = ({}: PredictProps) => {
       
       // 为每个模型组合创建3种切换策略的初始结果
       modelCombinations.forEach(combination => {
-        [1, 2, 3].forEach(strategy => {
+        [1, 2, 3, 4, 5, 6].forEach(strategy => {
           allStrategyResults.push({
             ...combination,
             switchStrategy: strategy,
@@ -762,7 +770,7 @@ const PredictMix = ({}: PredictProps) => {
               if (filteredData.length <= j) break;
               const item = filteredData[j];
               const prediction = formatGuessResult(item.guess_result);
-              const isLose = !checkThreePeriodsMatch(prediction, item.ext_result);
+              const isLose = !checkCurrentPeriodMatch(prediction, item.ext_result, item.guess_period);
               if (isLose && item.ai_type.name === defaultItem.ai_type.name) {
                 count++;
               } else {
@@ -1048,6 +1056,9 @@ const PredictMix = ({}: PredictProps) => {
               <Select.Option value={1}>连输1期切换</Select.Option>
               <Select.Option value={2}>连输2期切换</Select.Option>
               <Select.Option value={3}>连输3期切换</Select.Option>
+              <Select.Option value={4}>连输4期切换</Select.Option>
+              <Select.Option value={5}>连输5期切换</Select.Option>
+              <Select.Option value={6}>连输6期切换</Select.Option>
             </Select>
           </div>
           <div className="predict-controls">
@@ -1496,7 +1507,6 @@ const PredictMix = ({}: PredictProps) => {
                 },
                 sorter: (a, b) => Number(parseFloat(b.winRate)) - Number(parseFloat(a.winRate)),
                 sortOrder: chickenTableSorter.columnKey === 'winRate' ? chickenTableSorter.order : null,
-                defaultSortOrder: 'descend',
               },
               {
                 title: '操作',
