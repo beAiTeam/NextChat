@@ -341,15 +341,16 @@ const PredictMix = ({}: PredictProps) => {
           }
           return count;
         })();
-
-        // if(i===1){
-        //   console.log("loseCount", loseCount);
-        //   loseCount = 1;
-        // }
+  
 
         // 如果连续输的次数达到切换策略要求，使用配合模型
-        if (loseCount >= switchStrategy && assistItem) {
-          filteredData.unshift(assistItem);
+        if (loseCount >= switchStrategy  ) {
+          if(assistItem){
+            filteredData.unshift(assistItem);
+          }else{
+            console.log("暂时没有对应辅助，所以这期不插入了",defaultItem.guess_period);
+          }
+         
         } else {
           filteredData.unshift(defaultItem);
         }
