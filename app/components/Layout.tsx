@@ -1,21 +1,20 @@
 import {
-  AppstoreOutlined,
-  FileSearchOutlined,
-  FireOutlined,
-  LineChartOutlined,
-  MenuFoldOutlined,
-  MenuUnfoldOutlined,
-  MergeOutlined,
-  MessageOutlined,
-  PrinterOutlined,
-  RobotOutlined,
-  RocketOutlined,
-  SettingOutlined,
-  ToolOutlined,
-} from "@ant-design/icons";
-import { Layout, Menu } from "antd";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+    AppstoreOutlined,
+    FileSearchOutlined,
+    FireOutlined,
+    LineChartOutlined,
+    MenuFoldOutlined,
+    MenuUnfoldOutlined, MergeOutlined,
+    MessageOutlined, PrinterOutlined,
+    RobotOutlined,
+    RocketOutlined,
+    SettingOutlined,
+    ToolOutlined,
+    TrophyOutlined
+} from '@ant-design/icons';
+import { Layout, Menu } from 'antd';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 const { Sider, Content } = Layout;
 
@@ -30,34 +29,39 @@ const MainLayout = ({ children }: MainLayoutProps) => {
 
   const menuItems = [
     {
-      key: "/todo",
+      key: '/todo',
       icon: <FileSearchOutlined />,
-      label: "List",
+      label: 'List',
     },
     {
-      key: "/predict-mix",
+      key: '/chicken-analysis',
+      icon: <TrophyOutlined />,
+      label: '吃鸡分析',
+    },
+    {
+      key: '/predict-mix',
       icon: <MergeOutlined />,
-      label: "AI混合预测",
+      label: 'AI混合预测',
     },
     {
-      key: "/predict",
+      key: '/predict',
       icon: <FireOutlined />,
-      label: "AI预测",
+      label: 'AI预测',
     },
     {
-      key: "/predict-plus",
+      key: '/predict-plus',
       icon: <RocketOutlined />,
-      label: "AI预测Plus",
+      label: 'AI预测Plus',
     },
     {
-      key: "/predict-gemini",
+      key: '/predict-gemini',
       icon: <RocketOutlined />,
-      label: "AI预测 Gemini",
+      label: 'AI预测 Gemini',
     },
     {
-      key: "/predict-gemini-plus",
+      key: '/predict-gemini-plus',
       icon: <RocketOutlined />,
-      label: "AI预测 Gemini Plus",
+      label: 'AI预测 Gemini Plus',
     },
     {
       key: "/predict-gemini-pro",
@@ -65,39 +69,39 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: "AI预测 Gemini Pro",
     },
     {
-      key: "/predict-chart",
+      key: '/predict-chart',
       icon: <LineChartOutlined />,
-      label: "AI预测图表",
+      label: 'AI预测图表',
     },
     {
-      key: "/aitype",
+      key: '/aitype',
       icon: <AppstoreOutlined />,
-      label: "AI类型",
+      label: 'AI类型',
     },
     {
-      key: "/log",
+      key: '/log',
       icon: <PrinterOutlined />,
-      label: "Log",
+      label: 'Log',
     },
     {
-      key: "/prompt",
+      key: '/prompt',
       icon: <RobotOutlined />,
-      label: "Prompt管理",
+      label: 'Prompt管理',
     },
     {
-      key: "/tool",
+      key: '/tool',
       icon: <ToolOutlined />,
-      label: "工具箱",
+      label: '工具箱',
     },
     {
-      key: "/predict-config",
+      key: '/predict-config',
       icon: <SettingOutlined />,
-      label: "预测配置",
+      label: '预测配置',
     },
     {
-      key: "/",
+      key: '/',
       icon: <MessageOutlined />,
-      label: "Chat",
+      label: 'Chat',
     },
   ];
 
@@ -106,7 +110,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   };
 
   return (
-    <Layout style={{ minHeight: "100vh" }}>
+    <Layout style={{ minHeight: '100vh' }}>
       <Sider
         theme="light"
         collapsible
@@ -114,24 +118,23 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         onCollapse={(value) => setCollapsed(value)}
         trigger={null}
       >
-        <div
-          style={{
-            height: "64px",
-            display: "flex",
-            marginLeft: "16px",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 16px",
-          }}
-        >
+        <div style={{
+          height: '64px',
+          display: 'flex',
+          marginLeft: '16px',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '0 16px'
+        }}>
+
           {collapsed ? (
             <MenuUnfoldOutlined
-              style={{ fontSize: "16px", cursor: "pointer" }}
+              style={{ fontSize: '16px', cursor: 'pointer' }}
               onClick={() => setCollapsed(false)}
             />
           ) : (
             <MenuFoldOutlined
-              style={{ fontSize: "16px", cursor: "pointer" }}
+              style={{ fontSize: '16px', cursor: 'pointer' }}
               onClick={() => setCollapsed(true)}
             />
           )}
@@ -144,14 +147,7 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         />
       </Sider>
       <Layout>
-        <Content
-          style={{
-            padding: "24px",
-            background: "#fff",
-            overflowY: "auto",
-            height: "calc(100vh - 48px)",
-          }}
-        >
+        <Content style={{ padding: '24px', background: '#fff',   overflowY: 'auto', height: 'calc(100vh - 48px)' }}>
           {children}
         </Content>
       </Layout>
