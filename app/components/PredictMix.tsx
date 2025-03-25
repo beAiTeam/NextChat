@@ -70,6 +70,7 @@ const PredictMix = ({}: PredictProps) => {
   const router = useRouter();
   const localStorage = safeLocalStorage();
   const hasLoadedFromStorage = useRef(false);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [defaultModel, setDefaultModel] = useState<LotAiGuessType>(LotAiGuessType.Ai5_Normal);
   const [assistModel, setAssistModel] = useState<LotAiGuessType>(LotAiGuessType.Ai5_Gemini_Plus);
@@ -143,6 +144,7 @@ const PredictMix = ({}: PredictProps) => {
     }
     
     hasLoadedFromStorage.current = true;
+    setIsSettingsLoaded(true);
   }, []); // 只在组件挂载时读取一次
 
   // 当设置变化时保存到localStorage
@@ -369,8 +371,10 @@ const PredictMix = ({}: PredictProps) => {
   };
 
   useEffect(() => {
-    fetchData(currentPage, pageSize);
-  }, [currentPage, pageSize, timeRange, defaultModel, assistModel,switchStrategy]);
+    if (!isSettingsLoaded) return; // 只有在设置加载完成后才开始获取数据
+    fetchData(currentPage, pageSize); 
+   
+  }, [currentPage, pageSize, timeRange, defaultModel, assistModel, switchStrategy, isSettingsLoaded]);
 
   // 处理时间范围变化
   const handleTimeRangeChange = (newTimeRange: [Dayjs | null, Dayjs | null]) => {
