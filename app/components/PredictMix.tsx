@@ -322,19 +322,10 @@ const PredictMix = ({}: PredictProps) => {
           continue;
         }
 
-        
 
         // 获取历史数据来判断是否连续输
-        const loseCount = (() => {
-          // 如果切换策略是1，只需要判断上一期是否失败
-          if (switchStrategy === 1) {
-            if (filteredData.length === 0) return 0;
-            const lastItem = filteredData[0];
-            const prediction = formatGuessResult(lastItem.guess_result);
-            return !checkCurrentPeriodMatch(prediction, lastItem.ext_result, lastItem.guess_period) 
-              && lastItem.ai_type.name === defaultItem.ai_type.name ? 1 : 0;
-          }
-
+        var loseCount = (() => {
+          
           // 其他切换策略继续使用原有的连输判断逻辑
           let count = 0;
           for (let j = 0; j < switchStrategy; j++) {
@@ -350,6 +341,11 @@ const PredictMix = ({}: PredictProps) => {
           }
           return count;
         })();
+
+        // if(i===1){
+        //   console.log("loseCount", loseCount);
+        //   loseCount = 1;
+        // }
 
         // 如果连续输的次数达到切换策略要求，使用配合模型
         if (loseCount >= switchStrategy && assistItem) {
