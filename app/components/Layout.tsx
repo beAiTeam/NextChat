@@ -74,6 +74,11 @@ const MainLayout = ({ children }: MainLayoutProps) => {
       label: 'AI预测图表',
     },
     {
+      key: '/predict-compare',
+      icon: <LineChartOutlined />,
+      label: '多模型对比',
+    },
+    {
       key: '/aitype',
       icon: <AppstoreOutlined />,
       label: 'AI类型',

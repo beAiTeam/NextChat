@@ -1,0 +1,591 @@
+"use client";
+
+import { Button, Card, DatePicker, Input, Radio, Space } from "antd";
+import { Dayjs } from "dayjs";
+import ReactECharts from 'echarts-for-react';
+import { useEffect, useRef, useState } from "react";
+import { LotAiGuessType } from "../types/ai";
+import { safeLocalStorage } from "../utils";
+import axiosServices from "../utils/my-axios";
+import {
+  BetConfig,
+  calculateBalanceChange,
+  checkCurrentPeriodMatch,
+  checkThreePeriodsMatch,
+  checkTwoPeriodsMatch,
+  DrawResult,
+  formatGuessResult,
+  GuessResult
+} from "../utils/predict-utils";
+import MainLayout from "./Layout";
+
+const { RangePicker } = DatePicker;
+
+interface PredictItem {
+  _id: string;
+  created_at: string;
+  updated_at: string;
+  guess_period: string;
+  guess_time: number;
+  guess_result: GuessResult | null;
+  guess_type: string;
+  ext_result: DrawResult[] | null;
+  draw_status: "created" | "drawed" | "executing" | "finished" | "failed";
+  retry_count: number;
+  is_success: boolean;
+}
+
+interface ModelData {
+  modelType: LotAiGuessType;
+  data: PredictItem[];
+  baseData: PredictItem[];
+  balanceData: Array<{ time: string; balance: number }>;
+  winRateData: Array<{ time: string; winRate: number }>;
+}
+
+export const PredictCompare = () => {
+  const localStorage = safeLocalStorage();
+  const hasLoadedFromStorage = useRef(false);
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [dataLimit, setDataLimit] = useState(50);
+  const [baseDataLimit, setBaseDataLimit] = useState(100);
+  const [modelsData, setModelsData] = useState<ModelData[]>([]);
+  const [winType, setWinType] = useState<"current" | "two" | "any">("current");
+  const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
+  const [betConfig, setBetConfig] = useState<BetConfig>(() => {
+    try {
+      const savedConfig = localStorage.getItem("betConfig");
+      return savedConfig ? JSON.parse(savedConfig) : { x: 1, y: 2, z: 4 };
+    } catch {
+      return { x: 1, y: 2, z: 4 };
+    }
+  });
+
+  // 从localStorage读取保存的设置
+  useEffect(() => {
+    if (hasLoadedFromStorage.current) return;
+    
+    const savedDataLimit = localStorage.getItem("predict_data_limit");
+    const savedBaseDataLimit = localStorage.getItem("predict_base_data_limit");
+    const savedWinType = localStorage.getItem("predict_win_type");
+
+    if (savedDataLimit) {
+      setDataLimit(parseInt(savedDataLimit));
+    }
+    if (savedBaseDataLimit) {
+      setBaseDataLimit(parseInt(savedBaseDataLimit));
+    }
+    if (savedWinType) {
+      setWinType(savedWinType as "current" | "two" | "any");
+    }
+    
+    hasLoadedFromStorage.current = true;
+    setIsSettingsLoaded(true);
+  }, []); // 只在组件挂载时读取一次
+
+  // 当设置变化时保存到localStorage
+  useEffect(() => {
+    localStorage.setItem("predict_data_limit", dataLimit.toString());
+  }, [dataLimit]);
+
+  useEffect(() => {
+    localStorage.setItem("predict_base_data_limit", baseDataLimit.toString());
+  }, [baseDataLimit]);
+
+  useEffect(() => {
+    localStorage.setItem("predict_win_type", winType);
+  }, [winType]);
+
+  useEffect(() => {
+    localStorage.setItem("betConfig", JSON.stringify(betConfig));
+  }, [betConfig]);
+
+  // 处理胜率类型变化
+  const handleWinTypeChange = (newWinType: "current" | "two" | "any") => {
+    setWinType(newWinType);
+    if (modelsData.length > 0) {
+      const updatedModelsData = modelsData.map(modelData => ({
+        ...modelData,
+        winRateData: generateWinRateData(modelData.data, modelData.baseData)
+      }));
+      setModelsData(updatedModelsData);
+    }
+  };
+
+  // 处理时间范围变化
+  const handleTimeRangeChange = (range: [Dayjs | null, Dayjs | null]) => {
+    setTimeRange(range);
+    if (range[0] && range[1]) {
+      setDataLimit(2000); // 当选择时间范围时，自动设置为2000条数据
+    }
+  };
+
+  // 处理倍投配置变化
+  const handleBetConfigChange = (key: "x" | "y" | "z", value: string) => {
+    const numValue = Math.min(Math.max(Number(value) || 0, 0), 100);
+    const newConfig = { ...betConfig, [key]: numValue };
+    setBetConfig(newConfig);
+    try {
+      localStorage.setItem("betConfig", JSON.stringify(newConfig));
+    } catch (error) {
+      console.error("Failed to save bet config:", error);
+    }
+    // 重新计算所有模型的余额数据
+    if (modelsData.length > 0) {
+      const updatedModelsData = modelsData.map(modelData => ({
+        ...modelData,
+        balanceData: generateBalanceData(modelData.data, modelData.baseData)
+      }));
+      setModelsData(updatedModelsData);
+    }
+  };
+
+  // 生成余额变化数据
+  const generateBalanceData = (items: PredictItem[], baseItems: PredictItem[]) => {
+    const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
+    return sortedItems.map((item, index) => {
+      // 计算到当前项为止的所有数据
+      let currentItems = sortedItems.slice(0, index + 1);
+      if (baseItems?.length > 0) {
+        const needCount = dataLimit - currentItems.length;
+        if (needCount > 0) {
+          const cloneBaseData = JSON.parse(JSON.stringify(baseItems));
+          const reverseBaseData = cloneBaseData.reverse();
+          const startIndex = Math.max(reverseBaseData.length - needCount, 1);
+          const relevantBaseData = reverseBaseData.slice(startIndex);
+          currentItems = [...relevantBaseData, ...currentItems];
+        }
+      }
+
+      let totalBalance = 0;
+      currentItems.forEach((currentItem) => {
+        const balanceResult = calculateBalanceChange(
+          formatGuessResult(currentItem.guess_result),
+          currentItem.ext_result,
+          betConfig,
+        );
+        totalBalance += balanceResult.balance;
+      });
+
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      let timeStr;
+
+      if (date.toDateString() === today.toDateString()) {
+        timeStr = date.toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      } else {
+        timeStr = date.toLocaleString("zh-CN");
+      }
+
+      return {
+        time: timeStr,
+        balance: Math.floor(totalBalance * 100) / 100,
+      };
+    });
+  };
+
+  // 计算胜率
+  const calculateWinRate = (items: PredictItem[]): number => {
+    const validItems = items.filter(
+      (item) => item.ext_result && item.ext_result.length > 0
+    );
+    if (validItems.length === 0) return 0;
+
+    const winCount = validItems.filter((item) => {
+      if (winType === "current") {
+        return checkCurrentPeriodMatch(
+          formatGuessResult(item.guess_result),
+          item.ext_result,
+          item.guess_period
+        );
+      } else if (winType === "two") {
+        return checkTwoPeriodsMatch(
+          formatGuessResult(item.guess_result),
+          item.ext_result
+        );
+      } else {
+        return checkThreePeriodsMatch(
+          formatGuessResult(item.guess_result),
+          item.ext_result
+        );
+      }
+    }).length;
+
+    return (winCount / validItems.length) * 100;
+  };
+
+  // 生成胜率数据
+  const generateWinRateData = (items: PredictItem[], baseItems: PredictItem[]) => {
+    const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
+    const sortedBaseItems = [...baseItems].sort((a, b) => a.guess_time - b.guess_time);
+    
+    return sortedItems.map((item, index) => {
+      // 获取当前时间点之前的所有数据（包括基底数据）
+      let currentItems = sortedItems.slice(0, index + 1);
+      if (sortedBaseItems?.length > 0) {
+        // 添加所有基底数据
+        currentItems = [...sortedBaseItems, ...currentItems];
+      }
+
+      const winRate = calculateWinRate(currentItems);
+
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      let timeStr;
+
+      if (date.toDateString() === today.toDateString()) {
+        timeStr = date.toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      } else {
+        timeStr = date.toLocaleString("zh-CN");
+      }
+
+      return {
+        time: timeStr,
+        winRate: Number(winRate.toFixed(2))
+      };
+    });
+  };
+
+  // 获取模型数据
+  const fetchModelData = async (modelType: LotAiGuessType) => {
+    try {
+      const totalSize = dataLimit + baseDataLimit;
+      const params: any = {
+        page: 1,
+        page_size: totalSize,
+        guess_type: modelType,
+      };
+
+      // 添加时间范围参数
+      if (timeRange[0] && timeRange[1]) {
+        // 计算基底数据需要的时间范围（每5分钟一条数据）
+        console.log('baseDataLimit',baseDataLimit)
+        const baseDataMinutes = baseDataLimit * 5;
+        const baseStartTime = timeRange[0].subtract(baseDataMinutes, 'minute');
+        
+        params.start_time = Math.floor(baseStartTime.valueOf() / 1000);
+        params.end_time = Math.floor(timeRange[1].valueOf() / 1000);
+        params.page_size = 10000; // 当选择时间范围时，自动设置为10000条数据
+      }
+
+      // 获取数据
+      const response = await axiosServices.get("/client/lot/get_ai_guess_list", {
+        params,
+      });
+
+      const allData = response.data.data.data;
+      const displayData = allData.slice(0, dataLimit);
+      const baseData = allData.slice(dataLimit, totalSize);
+
+      return {
+        modelType,
+        data: displayData,
+        baseData: baseData,
+        balanceData: generateBalanceData(displayData, baseData),
+        winRateData: generateWinRateData(displayData, baseData)
+      };
+    } catch (error) {
+      console.error(`获取模型 ${modelType} 数据失败:`, error);
+      return null;
+    }
+  };
+
+  // 开始分析
+  const handleAnalysis = async () => {
+    setIsLoading(true);
+    try {
+      const modelTypes = [
+        LotAiGuessType.Ai5_Normal,
+        LotAiGuessType.Ai5_Plus,
+        LotAiGuessType.Ai5_Gemini,
+        LotAiGuessType.Ai5_Gemini_Plus
+      ];
+      
+      const results = await Promise.all(
+        modelTypes.map(async modelType => {
+          try {
+            return await fetchModelData(modelType);
+          } catch (error) {
+            console.error(`获取模型 ${modelType} 数据失败:`, error);
+            return null;
+          }
+        })
+      );
+      
+      const validResults = results.filter((result): result is ModelData => result !== null);
+      console.log('获取到的模型数据:', validResults);
+      
+      if (validResults.length === 0) {
+        console.error('没有获取到任何有效的模型数据');
+        return;
+      }
+      
+      setModelsData(validResults);
+    } catch (error) {
+      console.error("分析失败:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 渲染余额变化趋势图
+  const renderBalanceChart = () => {
+    const generateColor = (index: number) => {
+      const colors = [
+        '#2593fc', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#13c2c2',
+        '#eb2f96', '#1890ff', '#fa8c16', '#a0d911', '#9254de', '#36cfc9'
+      ];
+      return colors[index % colors.length];
+    };
+
+    const allTimes = new Set<string>();
+    modelsData.forEach(modelData => {
+      modelData.balanceData.forEach(item => {
+        allTimes.add(item.time);
+      });
+    });
+    const timeArray = Array.from(allTimes).sort();
+
+    const option = {
+      title: {
+        text: '余额变化趋势对比',
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis' as const,
+        formatter: function(params: any) {
+          if (!Array.isArray(params)) {
+            return '';
+          }
+          let result = params[0].name + '<br/>';
+          params.forEach((param: any) => {
+            const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span>`;
+            const value = param.value === null ? '暂无数据' : param.value.toFixed(2);
+            result += `${marker}${param.seriesName}: ${value}<br/>`;
+          });
+          return result;
+        }
+      },
+      legend: {
+        data: modelsData.map(model => model.modelType),
+        top: 30,
+        type: 'scroll' as const,
+        width: '80%'
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 100,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: timeArray,
+        axisLabel: {
+          rotate: 45,
+          interval: Math.floor(timeArray.length / 10)
+        }
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: '余额'
+      },
+      series: modelsData.map((modelData, index) => ({
+        name: modelData.modelType,
+        type: 'line' as const,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        sampling: 'lttb' as const,
+        data: timeArray.map(time => {
+          const dataPoint = modelData.balanceData.find(item => item.time === time);
+          return dataPoint ? dataPoint.balance : null;
+        }),
+        itemStyle: {
+          color: generateColor(index)
+        },
+        lineStyle: {
+          width: 2
+        }
+      }))
+    };
+
+    return option;
+  };
+
+  // 渲染胜率趋势图
+  const renderWinRateChart = () => {
+    const generateColor = (index: number) => {
+      const colors = [
+        '#2593fc', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#13c2c2',
+        '#eb2f96', '#1890ff', '#fa8c16', '#a0d911', '#9254de', '#36cfc9'
+      ];
+      return colors[index % colors.length];
+    };
+
+    const allTimes = new Set<string>();
+    modelsData.forEach(modelData => {
+      modelData.winRateData.forEach(item => {
+        allTimes.add(item.time);
+      });
+    });
+    const timeArray = Array.from(allTimes).sort();
+
+    const option = {
+      title: {
+        text: '胜率趋势对比',
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis' as const,
+        formatter: function(params: any) {
+          if (!Array.isArray(params)) {
+            return '';
+          }
+          let result = params[0].name + '<br/>';
+          params.forEach((param: any) => {
+            const marker = `<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:${param.color};"></span>`;
+            const value = param.value === null ? '暂无数据' : param.value.toFixed(2);
+            result += `${marker}${param.seriesName}: ${value}%<br/>`;
+          });
+          return result;
+        }
+      },
+      legend: {
+        data: modelsData.map(model => model.modelType),
+        top: 30,
+        type: 'scroll' as const,
+        width: '80%'
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 100,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: timeArray,
+        axisLabel: {
+          rotate: 45,
+          interval: Math.floor(timeArray.length / 10)
+        }
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: '胜率(%)',
+        min: 0,
+        max: 100
+      },
+      series: modelsData.map((modelData, index) => ({
+        name: modelData.modelType,
+        type: 'line' as const,
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        sampling: 'lttb' as const,
+        data: timeArray.map(time => {
+          const dataPoint = modelData.winRateData.find(item => item.time === time);
+          return dataPoint ? dataPoint.winRate : null;
+        }),
+        itemStyle: {
+          color: generateColor(index)
+        },
+        lineStyle: {
+          width: 2
+        }
+      }))
+    };
+
+    return option;
+  };
+
+  return (
+    <MainLayout>
+      <div className="p-4">
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <Card title="数据配置">
+            <Space direction="vertical" style={{ width: '100%' }}>
+              <Space>
+                <Input
+                  addonBefore="数据量"
+                  value={dataLimit}
+                  onChange={(e) => setDataLimit(parseInt(e.target.value) || 0)}
+                  style={{ width: 200 }}
+                />
+                <Input
+                  addonBefore="基底数据量"
+                  value={baseDataLimit}
+                  onChange={(e) => setBaseDataLimit(parseInt(e.target.value) || 0)}
+                  style={{ width: 200 }}
+                />
+              </Space>
+              <Space>
+                <Input
+                  addonBefore="倍投X"
+                  value={betConfig.x}
+                  onChange={(e) =>
+                    setBetConfig({ ...betConfig, x: parseFloat(e.target.value) || 0 })
+                  }
+                  style={{ width: 150 }}
+                />
+                <Input
+                  addonBefore="倍投Y"
+                  value={betConfig.y}
+                  onChange={(e) =>
+                    setBetConfig({ ...betConfig, y: parseFloat(e.target.value) || 0 })
+                  }
+                  style={{ width: 150 }}
+                />
+                <Input
+                  addonBefore="倍投Z"
+                  value={betConfig.z}
+                  onChange={(e) =>
+                    setBetConfig({ ...betConfig, z: parseFloat(e.target.value) || 0 })
+                  }
+                  style={{ width: 150 }}
+                />
+              </Space>
+              <Space>
+                <Radio.Group value={winType} onChange={(e) => handleWinTypeChange(e.target.value)}>
+                  <Radio.Button value="current">当期胜率</Radio.Button>
+                  <Radio.Button value="two">两期胜率</Radio.Button>
+                  <Radio.Button value="any">三期胜率</Radio.Button>
+                </Radio.Group>
+                <RangePicker
+                  showTime
+                  onChange={(dates) => handleTimeRangeChange(dates as [Dayjs, Dayjs])}
+                />
+              </Space>
+              <Button type="primary" onClick={handleAnalysis} loading={isLoading}>
+                开始分析
+              </Button>
+            </Space>
+          </Card>
+
+          {modelsData && (
+            <>
+              <Card title="余额变化趋势">
+                <ReactECharts option={renderBalanceChart()} />
+              </Card>
+              <Card title="胜率趋势">
+                <ReactECharts option={renderWinRateChart()} />
+              </Card>
+            </>
+          )}
+        </Space>
+      </div>
+    </MainLayout>
+  );
+}; 
