@@ -433,11 +433,22 @@ export const PredictCompare = () => {
     };
 
     const allTimes = new Set<string>();
+    let maxWinRate = 0;
+    let minWinRate = 100;
+
+    // 找出所有数据中的最大值和最小值
     modelsData.forEach(modelData => {
       modelData.winRateData.forEach(item => {
         allTimes.add(item.time);
+        if (item.winRate > maxWinRate) maxWinRate = item.winRate;
+        if (item.winRate < minWinRate) minWinRate = item.winRate;
       });
     });
+
+    // 计算Y轴范围，各扩展5%
+    const yAxisMin = Math.max(0, minWinRate - 5);
+    const yAxisMax = Math.min(100, maxWinRate + 5);
+
     const timeArray = Array.from(allTimes).sort();
 
     const option = {
@@ -484,8 +495,8 @@ export const PredictCompare = () => {
       yAxis: {
         type: 'value' as const,
         name: '胜率(%)',
-        min: 0,
-        max: 100
+        min: yAxisMin,
+        max: yAxisMax
       },
       series: modelsData.map((modelData, index) => ({
         name: modelData.modelType,
@@ -664,10 +675,10 @@ export const PredictCompare = () => {
           {modelsData && (
             <>
               <Card title="余额变化趋势">
-                <ReactECharts option={renderBalanceChart()} />
+                <ReactECharts option={renderBalanceChart()} style={{ height: '600px' }} />
               </Card>
               <Card title="胜率趋势">
-                <ReactECharts option={renderWinRateChart()} />
+                <ReactECharts option={renderWinRateChart()} style={{ height: '600px' }} />
               </Card>
               <Card title="预测结果对比">
                 <Table
