@@ -102,41 +102,77 @@ export const PredictCompare = () => {
     localStorage.setItem("betConfig", JSON.stringify(betConfig));
   }, [betConfig]);
 
+  // 计算胜率
+  const calculateWinRate = (items: PredictItem[], currentWinType: "current" | "two" | "any"): number => {
+    const validItems = items.filter(
+      (item) => item.ext_result && item.ext_result.length > 0
+    );
+    if (validItems.length === 0) return 0;
+
+    const winCount = validItems.filter((item) => {
+      const guessResult = formatGuessResult(item.guess_result);
+      if (!guessResult || !item.ext_result) return false;
+
+      if (currentWinType === "current") {
+        return checkCurrentPeriodMatch(guessResult, item.ext_result, item.guess_period);
+      } else if (currentWinType === "two") {
+        return checkTwoPeriodsMatch(guessResult, item.ext_result);
+      } else {
+        return checkThreePeriodsMatch(guessResult, item.ext_result);
+      }
+    }).length;
+
+    return (winCount / validItems.length) * 100;
+  };
+
+  // 生成胜率数据
+  const generateWinRateData = (items: PredictItem[], baseItems: PredictItem[], currentWinType: "current" | "two" | "any") => {
+    const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
+    const sortedBaseItems = baseItems ? [...baseItems].sort((a, b) => a.guess_time - b.guess_time) : [];
+    
+    return sortedItems.map((item, index) => {
+      // 获取当前时间点之前的所有数据（包括基底数据）
+      let currentItems = sortedItems.slice(0, index + 1);
+      
+      // 找到当前项的时间戳
+      const currentTime = item.guess_time;
+      
+      // 从基底数据中筛选出时间早于当前项的数据
+      const relevantBaseItems = sortedBaseItems.filter(baseItem => baseItem.guess_time < currentTime);
+      
+      // 合并基底数据和当前数据进行胜率计算
+      const itemsForCalculation = [...relevantBaseItems, ...currentItems];
+
+      const winRate = calculateWinRate(itemsForCalculation, currentWinType);
+
+      const date = new Date(item.guess_time * 1000);
+      const today = new Date();
+      let timeStr;
+
+      if (date.toDateString() === today.toDateString()) {
+        timeStr = date.toLocaleTimeString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      } else {
+        timeStr = date.toLocaleString("zh-CN");
+      }
+
+      return {
+        time: timeStr,
+        winRate: Number(winRate.toFixed(2))
+      };
+    });
+  };
+
   // 处理胜率类型变化
   const handleWinTypeChange = (newWinType: "current" | "two" | "any") => {
     setWinType(newWinType);
     if (modelsData.length > 0) {
       const updatedModelsData = modelsData.map(modelData => ({
         ...modelData,
-        winRateData: generateWinRateData(modelData.data, modelData.baseData)
-      }));
-      setModelsData(updatedModelsData);
-    }
-  };
-
-  // 处理时间范围变化
-  const handleTimeRangeChange = (range: [Dayjs | null, Dayjs | null]) => {
-    setTimeRange(range);
-    if (range[0] && range[1]) {
-      setDataLimit(2000); // 当选择时间范围时，自动设置为2000条数据
-    }
-  };
-
-  // 处理倍投配置变化
-  const handleBetConfigChange = (key: "x" | "y" | "z", value: string) => {
-    const numValue = Math.min(Math.max(Number(value) || 0, 0), 100);
-    const newConfig = { ...betConfig, [key]: numValue };
-    setBetConfig(newConfig);
-    try {
-      localStorage.setItem("betConfig", JSON.stringify(newConfig));
-    } catch (error) {
-      console.error("Failed to save bet config:", error);
-    }
-    // 重新计算所有模型的余额数据
-    if (modelsData.length > 0) {
-      const updatedModelsData = modelsData.map(modelData => ({
-        ...modelData,
-        balanceData: generateBalanceData(modelData.data, modelData.baseData)
+        winRateData: generateWinRateData(modelData.data, modelData.baseData, newWinType)
       }));
       setModelsData(updatedModelsData);
     }
@@ -190,70 +226,32 @@ export const PredictCompare = () => {
     });
   };
 
-  // 计算胜率
-  const calculateWinRate = (items: PredictItem[]): number => {
-    const validItems = items.filter(
-      (item) => item.ext_result && item.ext_result.length > 0
-    );
-    if (validItems.length === 0) return 0;
-
-    const winCount = validItems.filter((item) => {
-      if (winType === "current") {
-        return checkCurrentPeriodMatch(
-          formatGuessResult(item.guess_result),
-          item.ext_result,
-          item.guess_period
-        );
-      } else if (winType === "two") {
-        return checkTwoPeriodsMatch(
-          formatGuessResult(item.guess_result),
-          item.ext_result
-        );
-      } else {
-        return checkThreePeriodsMatch(
-          formatGuessResult(item.guess_result),
-          item.ext_result
-        );
-      }
-    }).length;
-
-    return (winCount / validItems.length) * 100;
+  // 处理时间范围变化
+  const handleTimeRangeChange = (range: [Dayjs | null, Dayjs | null]) => {
+    setTimeRange(range);
+    if (range[0] && range[1]) {
+      setDataLimit(2000); // 当选择时间范围时，自动设置为2000条数据
+    }
   };
 
-  // 生成胜率数据
-  const generateWinRateData = (items: PredictItem[], baseItems: PredictItem[]) => {
-    const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
-    const sortedBaseItems = [...baseItems].sort((a, b) => a.guess_time - b.guess_time);
-    
-    return sortedItems.map((item, index) => {
-      // 获取当前时间点之前的所有数据（包括基底数据）
-      let currentItems = sortedItems.slice(0, index + 1);
-      if (sortedBaseItems?.length > 0) {
-        // 添加所有基底数据
-        currentItems = [...sortedBaseItems, ...currentItems];
-      }
-
-      const winRate = calculateWinRate(currentItems);
-
-      const date = new Date(item.guess_time * 1000);
-      const today = new Date();
-      let timeStr;
-
-      if (date.toDateString() === today.toDateString()) {
-        timeStr = date.toLocaleTimeString("zh-CN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-      } else {
-        timeStr = date.toLocaleString("zh-CN");
-      }
-
-      return {
-        time: timeStr,
-        winRate: Number(winRate.toFixed(2))
-      };
-    });
+  // 处理倍投配置变化
+  const handleBetConfigChange = (key: "x" | "y" | "z", value: string) => {
+    const numValue = Math.min(Math.max(Number(value) || 0, 0), 100);
+    const newConfig = { ...betConfig, [key]: numValue };
+    setBetConfig(newConfig);
+    try {
+      localStorage.setItem("betConfig", JSON.stringify(newConfig));
+    } catch (error) {
+      console.error("Failed to save bet config:", error);
+    }
+    // 重新计算所有模型的余额数据
+    if (modelsData.length > 0) {
+      const updatedModelsData = modelsData.map(modelData => ({
+        ...modelData,
+        balanceData: generateBalanceData(modelData.data, modelData.baseData)
+      }));
+      setModelsData(updatedModelsData);
+    }
   };
 
   // 获取模型数据
@@ -292,7 +290,7 @@ export const PredictCompare = () => {
         data: displayData,
         baseData: baseData,
         balanceData: generateBalanceData(displayData, baseData),
-        winRateData: generateWinRateData(displayData, baseData)
+        winRateData: generateWinRateData(displayData, baseData, winType)
       };
     } catch (error) {
       console.error(`获取模型 ${modelType} 数据失败:`, error);
@@ -516,7 +514,7 @@ export const PredictCompare = () => {
   const generateTableData = () => {
     if (!modelsData.length) return [];
 
-    // 获取所有期号
+    // 只获取非基底数据的期号
     const allPeriods = new Set<string>();
     modelsData.forEach(modelData => {
       modelData.data.forEach(item => {
@@ -538,11 +536,17 @@ export const PredictCompare = () => {
       modelsData.forEach(modelData => {
         const item = modelData.data.find(d => d.guess_period === period);
         if (item) {
-          const isWin = checkCurrentPeriodMatch(
-            formatGuessResult(item.guess_result),
-            item.ext_result,
-            item.guess_period
-          );
+          const guessResult = formatGuessResult(item.guess_result);
+          let isWin = false;
+          if (guessResult && item.ext_result) {
+            if (winType === "current") {
+              isWin = checkCurrentPeriodMatch(guessResult, item.ext_result, item.guess_period);
+            } else if (winType === "two") {
+              isWin = checkTwoPeriodsMatch(guessResult, item.ext_result);
+            } else {
+              isWin = checkThreePeriodsMatch(guessResult, item.ext_result);
+            }
+          }
           row[modelData.modelType] = isWin;
         } else {
           row[modelData.modelType] = null;
@@ -624,25 +628,19 @@ export const PredictCompare = () => {
                 <Input
                   addonBefore="倍投X"
                   value={betConfig.x}
-                  onChange={(e) =>
-                    setBetConfig({ ...betConfig, x: parseFloat(e.target.value) || 0 })
-                  }
+                  onChange={(e) => handleBetConfigChange("x", e.target.value)}
                   style={{ width: 150 }}
                 />
                 <Input
                   addonBefore="倍投Y"
                   value={betConfig.y}
-                  onChange={(e) =>
-                    setBetConfig({ ...betConfig, y: parseFloat(e.target.value) || 0 })
-                  }
+                  onChange={(e) => handleBetConfigChange("y", e.target.value)}
                   style={{ width: 150 }}
                 />
                 <Input
                   addonBefore="倍投Z"
                   value={betConfig.z}
-                  onChange={(e) =>
-                    setBetConfig({ ...betConfig, z: parseFloat(e.target.value) || 0 })
-                  }
+                  onChange={(e) => handleBetConfigChange("z", e.target.value)}
                   style={{ width: 150 }}
                 />
               </Space>
