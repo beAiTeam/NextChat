@@ -544,6 +544,15 @@ export const PredictCompare = () => {
     return sortedPeriods.map(period => {
       const row: any = { key: period, period };
       
+      // 获取开奖结果
+      const firstModelData = modelsData[0].data.find(d => d.guess_period === period);
+      if (firstModelData?.ext_result && firstModelData.ext_result.length > 0) {
+        const matchedDrawResult = firstModelData.ext_result.find(drawResult => 
+          drawResult.draw_number === period
+        );
+        row.drawResult = matchedDrawResult ? matchedDrawResult.full_number : null;
+      }
+      
       modelsData.forEach(modelData => {
         const item = modelData.data.find(d => d.guess_period === period);
         if (item) {
@@ -558,7 +567,10 @@ export const PredictCompare = () => {
               isWin = checkThreePeriodsMatch(guessResult, item.ext_result);
             }
           }
-          row[modelData.modelType] = isWin;
+          row[modelData.modelType] = {
+            prediction: guessResult,
+            isWin: isWin
+          };
         } else {
           row[modelData.modelType] = null;
         }
@@ -576,8 +588,8 @@ export const PredictCompare = () => {
         dataIndex: 'period',
         key: 'period',
         fixed: 'left' as const,
-        width: 120,
-        render: (text: string) => (
+        width: 180,
+        render: (text: string, record: any) => (
           <span
             style={{ cursor: 'pointer' }}
             onClick={() => {
@@ -585,7 +597,7 @@ export const PredictCompare = () => {
               toast.success('已复制到剪贴板');
             }}
           >
-            {text}
+            {text} {record.drawResult ? `(${record.drawResult})` : ''}
           </span>
         ),
       },
@@ -595,19 +607,19 @@ export const PredictCompare = () => {
       title: modelData.modelType,
       dataIndex: modelData.modelType,
       key: modelData.modelType,
-      width: 60,
+      width: 100,
       align: 'center' as const,
-      render: (isWin: boolean | null) => {
-        if (isWin === null) return null;
+      render: (data: { prediction: string, isWin: boolean } | null) => {
+        if (!data) return null;
         return (
           <div style={{
-            width: '30px',
-            height: '30px',
-            margin: '0 auto',
-            backgroundColor: isWin ? '#faad14' : 'transparent',
+            padding: '4px',
+            backgroundColor: data.isWin ? '#faad14' : 'transparent',
             border: '1px solid #d9d9d9',
             borderRadius: '2px'
-          }} />
+          }}>
+            {data.prediction}
+          </div>
         );
       },
     }));
