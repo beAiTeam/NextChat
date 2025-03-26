@@ -1,9 +1,10 @@
 "use client";
 
-import { Button, Card, DatePicker, Input, Radio, Space } from "antd";
+import { Button, Card, DatePicker, Input, Radio, Space, Table } from "antd";
 import { Dayjs } from "dayjs";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useRef, useState } from "react";
+import { toast } from "react-hot-toast";
 import { LotAiGuessType } from "../types/ai";
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
@@ -511,6 +512,94 @@ export const PredictCompare = () => {
     return option;
   };
 
+  // 生成表格数据
+  const generateTableData = () => {
+    if (!modelsData.length) return [];
+
+    // 获取所有期号
+    const allPeriods = new Set<string>();
+    modelsData.forEach(modelData => {
+      modelData.data.forEach(item => {
+        allPeriods.add(item.guess_period);
+      });
+    });
+
+    // 按时间排序期号
+    const sortedPeriods = Array.from(allPeriods).sort((a, b) => {
+      const timeA = modelsData[0].data.find(item => item.guess_period === a)?.guess_time || 0;
+      const timeB = modelsData[0].data.find(item => item.guess_period === b)?.guess_time || 0;
+      return timeB - timeA;
+    });
+
+    // 生成表格数据
+    return sortedPeriods.map(period => {
+      const row: any = { key: period, period };
+      
+      modelsData.forEach(modelData => {
+        const item = modelData.data.find(d => d.guess_period === period);
+        if (item) {
+          const isWin = checkCurrentPeriodMatch(
+            formatGuessResult(item.guess_result),
+            item.ext_result,
+            item.guess_period
+          );
+          row[modelData.modelType] = isWin;
+        } else {
+          row[modelData.modelType] = null;
+        }
+      });
+
+      return row;
+    });
+  };
+
+  // 生成表格列配置
+  const generateTableColumns = () => {
+    const baseColumns = [
+      {
+        title: '期号',
+        dataIndex: 'period',
+        key: 'period',
+        fixed: 'left' as const,
+        width: 120,
+        render: (text: string) => (
+          <span
+            style={{ cursor: 'pointer' }}
+            onClick={() => {
+              navigator.clipboard.writeText(text);
+              toast.success('已复制到剪贴板');
+            }}
+          >
+            {text}
+          </span>
+        ),
+      },
+    ];
+
+    const modelColumns = modelsData.map(modelData => ({
+      title: modelData.modelType,
+      dataIndex: modelData.modelType,
+      key: modelData.modelType,
+      width: 60,
+      align: 'center' as const,
+      render: (isWin: boolean | null) => {
+        if (isWin === null) return null;
+        return (
+          <div style={{
+            width: '30px',
+            height: '30px',
+            margin: '0 auto',
+            backgroundColor: isWin ? '#faad14' : 'transparent',
+            border: '1px solid #d9d9d9',
+            borderRadius: '2px'
+          }} />
+        );
+      },
+    }));
+
+    return [...baseColumns, ...modelColumns];
+  };
+
   return (
     <MainLayout>
       <div className="p-4">
@@ -581,6 +670,15 @@ export const PredictCompare = () => {
               </Card>
               <Card title="胜率趋势">
                 <ReactECharts option={renderWinRateChart()} />
+              </Card>
+              <Card title="预测结果对比">
+                <Table
+                  dataSource={generateTableData()}
+                  columns={generateTableColumns()}
+                  scroll={{ x: 'max-content', y: 800 }}
+                  pagination={false}
+                  className="predict-compare-table"
+                />
               </Card>
             </>
           )}
