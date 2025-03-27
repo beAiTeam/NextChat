@@ -179,21 +179,11 @@ export const PredictCompare = () => {
   };
 
   // 生成余额变化数据
-  const generateBalanceData = (items: PredictItem[], baseItems: PredictItem[]) => {
+  const generateBalanceData = (items: PredictItem[]) => {
     const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
     return sortedItems.map((item, index) => {
       // 计算到当前项为止的所有数据
       let currentItems = sortedItems.slice(0, index + 1);
-      if (baseItems?.length > 0) {
-        const needCount = dataLimit - currentItems.length;
-        if (needCount > 0) {
-          const cloneBaseData = JSON.parse(JSON.stringify(baseItems));
-          const reverseBaseData = cloneBaseData.reverse();
-          const startIndex = Math.max(reverseBaseData.length - needCount, 1);
-          const relevantBaseData = reverseBaseData.slice(startIndex);
-          currentItems = [...relevantBaseData, ...currentItems];
-        }
-      }
 
       let totalBalance = 0;
       currentItems.forEach((currentItem) => {
@@ -248,7 +238,7 @@ export const PredictCompare = () => {
     if (modelsData.length > 0) {
       const updatedModelsData = modelsData.map(modelData => ({
         ...modelData,
-        balanceData: generateBalanceData(modelData.data, modelData.baseData)
+        balanceData: generateBalanceData(modelData.data)
       }));
       setModelsData(updatedModelsData);
     }
@@ -289,7 +279,7 @@ export const PredictCompare = () => {
         modelType,
         data: displayData,
         baseData: baseData,
-        balanceData: generateBalanceData(displayData, baseData),
+        balanceData: generateBalanceData(displayData),
         winRateData: generateWinRateData(displayData, baseData, winType)
       };
     } catch (error) {
