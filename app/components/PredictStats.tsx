@@ -3,12 +3,12 @@ import { Dayjs } from "dayjs";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import axiosServices from "../utils/my-axios";
 import {
-  checkCurrentPeriodMatch,
-  checkThreePeriodsMatch,
-  checkTwoPeriodsMatch,
-  DrawResult,
-  formatGuessResult,
-  GuessResult,
+    checkCurrentPeriodMatch,
+    checkThreePeriodsMatch,
+    checkTwoPeriodsMatch,
+    DrawResult,
+    formatGuessResult,
+    GuessResult,
 } from "../utils/predict-utils";
 
 const { RangePicker } = DatePicker;

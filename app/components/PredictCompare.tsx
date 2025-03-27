@@ -352,7 +352,11 @@ export const PredictCompare = () => {
         allTimes.add(item.time);
       });
     });
-    const timeArray = Array.from(allTimes).sort();
+    const timeArray = Array.from(allTimes).sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateA.getTime() - dateB.getTime();
+    });
 
     const option = {
       title: {
@@ -449,7 +453,11 @@ export const PredictCompare = () => {
     const yAxisMin = Math.max(0, minWinRate - 5);
     const yAxisMax = Math.min(100, maxWinRate + 5);
 
-    const timeArray = Array.from(allTimes).sort();
+    const timeArray = Array.from(allTimes).sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateA.getTime() - dateB.getTime();
+    });
 
     const option = {
       title: {

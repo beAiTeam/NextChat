@@ -62,6 +62,7 @@ const PredictChart = () => {
   const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const [detailsData, setDetailsData] = useState<any[]>([]);
   const [beforeData, setBeforeData] = useState<PredictItem[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // 检查当期是否中奖
   const checkCurrentPeriodWin = (record: PredictItem): boolean => {
@@ -240,10 +241,6 @@ const PredictChart = () => {
     items: PredictItem[],
     currentWinType: "current" | "two" | "any",
   ) => {
-    if (!beforeData?.length) {
-      return;
-    }
-    console.log("beforeData", beforeData);
     // 按时间排序
     const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
     const sumLen = sortedItems.length; // 应该是100
@@ -267,7 +264,6 @@ const PredictChart = () => {
           currentItems = [...relevantBeforeData, ...currentItems];
         }
       }
-      console.log("currentItems", currentItems);
       const winRate = calculateWinRate(currentItems, currentWinType);
 
       const date = new Date(item.guess_time * 1000);
@@ -357,8 +353,6 @@ const PredictChart = () => {
         balance: Math.floor(totalBalance * 100) / 100, // 保留两位小数
       };
     });
-
-    console.log("chartData", chartData);
 
     setBalanceData(balanceData);
     setChartData(chartData);
@@ -504,12 +498,41 @@ const PredictChart = () => {
 
   const [isCompare, setIsCompare] = useState(false);
 
+  const handleLoadMore = async () => {
+    setLoading(true);
+    try {
+      const nextPage = currentPage + 1;
+      const params = {
+        page: nextPage,
+        page_size: 100,
+        guess_type: guessType,
+      };
+
+      const response = await axiosServices.get(
+        "/client/lot/get_ai_guess_list",
+        { params },
+      );
+
+      const newData = response.data.data.data;
+      if (newData && newData.length > 0) {
+        const updatedData = [...data, ...newData];
+        setData(updatedData);
+        setCurrentPage(nextPage);
+        processChartData(updatedData, winType);
+      }
+    } catch (error) {
+      console.error("加载更多数据失败:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchWeeklyData();
   }, [guessType, winType]);
 
   useEffect(() => {
-    processChartData(data, winType, beforeData);
+    processChartData(data, winType);
   }, [winType, betConfig, data]);
 
   return (
@@ -630,6 +653,7 @@ const PredictChart = () => {
             chartData={chartData}
             loading={loading}
             winType={winType}
+            onLoadMore={handleLoadMore}
           />
 
           <WeeklyChart

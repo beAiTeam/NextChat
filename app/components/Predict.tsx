@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  CheckCircleOutlined,
-  CloseCircleOutlined,
-  InfoCircleOutlined,
-  ReloadOutlined
+    CheckCircleOutlined,
+    CloseCircleOutlined,
+    InfoCircleOutlined,
+    ReloadOutlined
 } from "@ant-design/icons";
 import { Button, Card, Col, Modal, Row, Table, Tag, Tooltip, Typography } from "antd";
 import { Dayjs } from "dayjs";
@@ -14,15 +14,15 @@ import * as XLSX from "xlsx";
 import { safeLocalStorage } from "../utils";
 import axiosServices from "../utils/my-axios";
 import {
-  BETTING_ODDS,
-  calculateBetProfit,
-  calculateTotalProfit,
-  checkCurrentPeriodMatch,
-  checkPeriodMatch,
-  checkThreePeriodsMatch,
-  DrawResult,
-  formatGuessResult,
-  GuessResult
+    BETTING_ODDS,
+    calculateBetProfit,
+    calculateTotalProfit,
+    checkCurrentPeriodMatch,
+    checkPeriodMatch,
+    checkThreePeriodsMatch,
+    DrawResult,
+    formatGuessResult,
+    GuessResult
 } from "../utils/predict-utils";
 import MainLayout from "./Layout";
 import "./Predict.scss";
@@ -562,7 +562,10 @@ const Predict = ({ guess_type }: PredictProps) => {
           guess_type={guess_type}
           defaultPageSize={100}
           defaultWinType="current"
-          onDataChange={(data) => console.log('数据更新:', data)}
+          onDataChange={(data, beforeData) => {
+            console.log('数据更新:', data);
+            console.log('之前数据:', beforeData);
+          }}
           onWinTypeChange={(type) => console.log('胜率类型更新:', type)}
           onTimeRangeChange={handleTimeRangeChange}
          />

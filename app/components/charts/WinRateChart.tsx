@@ -1,13 +1,14 @@
-import { Card, Spin } from "antd";
+import { Button, Card, Spin } from "antd";
 import ReactECharts from 'echarts-for-react';
 
 interface WinRateChartProps {
   chartData: any[];
   loading: boolean;
   winType: "current" | "two" | "any";
+  onLoadMore?: () => void;
 }
 
-const WinRateChart = ({ chartData, loading, winType }: WinRateChartProps) => {
+const WinRateChart = ({ chartData, loading, winType, onLoadMore }: WinRateChartProps) => {
   const winRateOption = {
     title: {
       text: '胜率趋势',
@@ -52,7 +53,6 @@ const WinRateChart = ({ chartData, loading, winType }: WinRateChartProps) => {
       markLine: {
         silent: true,
         symbol: 'none',
-
         data: [
           {
             yAxis: 70,
@@ -70,12 +70,28 @@ const WinRateChart = ({ chartData, loading, winType }: WinRateChartProps) => {
   return (
     <Card>
       <Spin spinning={loading}>
-        <ReactECharts
-          option={winRateOption}
-          style={{ height: '400px' }}
-          notMerge={true}
-          opts={{ renderer: 'svg' }}
-        />
+        <div style={{ position: 'relative' }}>
+          <ReactECharts
+            option={winRateOption}
+            style={{ height: '400px' }}
+            notMerge={true}
+            opts={{ renderer: 'svg' }}
+          />
+          {onLoadMore && (
+            <Button 
+              type="primary" 
+              onClick={onLoadMore}
+              style={{ 
+                position: 'absolute', 
+                left: '20px', 
+                bottom: '20px',
+                zIndex: 1
+              }}
+            >
+              加载更多数据
+            </Button>
+          )}
+        </div>
       </Spin>
     </Card>
   );
