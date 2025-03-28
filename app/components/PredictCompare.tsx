@@ -50,6 +50,7 @@ export const PredictCompare = () => {
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLimit, setDataLimit] = useState(50);
+  const [loadMoreCount, setLoadMoreCount] = useState(0);
   const [modelsData, setModelsData] = useState<ModelData[]>([]);
   const [winType, setWinType] = useState<"current" | "two" | "any">("current");
   const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
@@ -307,6 +308,50 @@ export const PredictCompare = () => {
       setModelsData(validResults);
     } catch (error) {
       console.error("分析失败:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 处理加载更多数据
+  const handleLoadMore = async () => {
+    setIsLoading(true);
+    try {
+      const modelTypes = [
+        LotAiGuessType.Ai5_Normal,
+        LotAiGuessType.Ai5_Plus,
+        LotAiGuessType.Ai5_Gemini,
+        LotAiGuessType.Ai5_Gemini_Plus
+      ];
+      
+      // 更新数据量，累加新的数据量
+      const newDataLimit = dataLimit + loadMoreCount;
+      setDataLimit(newDataLimit);
+      
+      const results = await Promise.all(
+        modelTypes.map(async modelType => {
+          try {
+            return await fetchModelData(modelType);
+          } catch (error) {
+            console.error(`获取模型 ${modelType} 数据失败:`, error);
+            return null;
+          }
+        })
+      );
+      
+      const validResults = results.filter((result): result is ModelData => result !== null);
+      console.log('获取到的模型数据:', validResults);
+      
+      if (validResults.length === 0) {
+        console.error('没有获取到任何有效的模型数据');
+        return;
+      }
+      
+      setModelsData(validResults);
+      // 重置加载更多计数
+      setLoadMoreCount(0);
+    } catch (error) {
+      console.error("加载更多数据失败:", error);
     } finally {
       setIsLoading(false);
     }
@@ -656,9 +701,11 @@ export const PredictCompare = () => {
                   onChange={(dates) => handleTimeRangeChange(dates as [Dayjs, Dayjs])}
                 />
               </Space>
-              <Button type="primary" onClick={handleAnalysis} loading={isLoading}>
-                开始分析
-              </Button>
+              <Space>
+                <Button type="primary" onClick={handleAnalysis} loading={isLoading}>
+                  开始分析
+                </Button>
+              </Space>
             </Space>
           </Card>
 
@@ -667,7 +714,22 @@ export const PredictCompare = () => {
               <Card title="余额变化趋势">
                 <ReactECharts option={renderBalanceChart()} style={{ height: '600px' }} />
               </Card>
-              <Card title="胜率趋势">
+              <Card 
+                title="胜率趋势"
+                extra={
+                  <Space>
+                    <Input
+                      addonBefore="加载更多期数"
+                      value={loadMoreCount}
+                      onChange={(e) => setLoadMoreCount(parseInt(e.target.value) || 0)}
+                      style={{ width: 200 }}
+                    />
+                    <Button type="primary" onClick={handleLoadMore} loading={isLoading}>
+                      加载更多
+                    </Button>
+                  </Space>
+                }
+              >
                 <ReactECharts option={renderWinRateChart()} style={{ height: '600px' }} />
               </Card>
               <Card title="预测结果对比">
