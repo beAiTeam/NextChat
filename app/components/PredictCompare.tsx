@@ -50,7 +50,6 @@ export const PredictCompare = () => {
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLimit, setDataLimit] = useState(50);
-  const [baseDataLimit, setBaseDataLimit] = useState(100);
   const [modelsData, setModelsData] = useState<ModelData[]>([]);
   const [winType, setWinType] = useState<"current" | "two" | "any">("current");
   const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
@@ -68,14 +67,10 @@ export const PredictCompare = () => {
     if (hasLoadedFromStorage.current) return;
     
     const savedDataLimit = localStorage.getItem("predict_data_limit");
-    const savedBaseDataLimit = localStorage.getItem("predict_base_data_limit");
     const savedWinType = localStorage.getItem("predict_win_type");
 
     if (savedDataLimit) {
       setDataLimit(parseInt(savedDataLimit));
-    }
-    if (savedBaseDataLimit) {
-      setBaseDataLimit(parseInt(savedBaseDataLimit));
     }
     if (savedWinType) {
       setWinType(savedWinType as "current" | "two" | "any");
@@ -89,14 +84,6 @@ export const PredictCompare = () => {
   useEffect(() => {
     localStorage.setItem("predict_data_limit", dataLimit.toString());
   }, [dataLimit]);
-
-  useEffect(() => {
-    localStorage.setItem("predict_base_data_limit", baseDataLimit.toString());
-  }, [baseDataLimit]);
-
-  useEffect(() => {
-    localStorage.setItem("predict_win_type", winType);
-  }, [winType]);
 
   useEffect(() => {
     localStorage.setItem("betConfig", JSON.stringify(betConfig));
@@ -247,7 +234,7 @@ export const PredictCompare = () => {
   // 获取模型数据
   const fetchModelData = async (modelType: LotAiGuessType) => {
     try {
-      const totalSize = dataLimit + baseDataLimit;
+      const totalSize = dataLimit * 2; // 修改为数据量的两倍，因为基底数据量等于数据量
       const params: any = {
         page: 1,
         page_size: totalSize,
@@ -257,8 +244,7 @@ export const PredictCompare = () => {
       // 添加时间范围参数
       if (timeRange[0] && timeRange[1]) {
         // 计算基底数据需要的时间范围（每5分钟一条数据）
-        console.log('baseDataLimit',baseDataLimit)
-        const baseDataMinutes = baseDataLimit * 5;
+        const baseDataMinutes = dataLimit * 5; // 使用dataLimit作为基底数据量
         const baseStartTime = timeRange[0].subtract(baseDataMinutes, 'minute');
         
         params.start_time = Math.floor(baseStartTime.valueOf() / 1000);
@@ -273,7 +259,7 @@ export const PredictCompare = () => {
 
       const allData = response.data.data.data;
       const displayData = allData.slice(0, dataLimit);
-      const baseData = allData.slice(dataLimit, totalSize);
+      const baseData = allData.slice(dataLimit, totalSize); // 使用dataLimit作为分界点
 
       return {
         modelType,
@@ -636,12 +622,6 @@ export const PredictCompare = () => {
                   addonBefore="数据量"
                   value={dataLimit}
                   onChange={(e) => setDataLimit(parseInt(e.target.value) || 0)}
-                  style={{ width: 200 }}
-                />
-                <Input
-                  addonBefore="基底数据量"
-                  value={baseDataLimit}
-                  onChange={(e) => setBaseDataLimit(parseInt(e.target.value) || 0)}
                   style={{ width: 200 }}
                 />
               </Space>
