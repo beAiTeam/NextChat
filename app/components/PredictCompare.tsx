@@ -115,23 +115,33 @@ export const PredictCompare = () => {
 
   // 生成胜率数据
   const generateWinRateData = (items: PredictItem[], baseItems: PredictItem[], currentWinType: "current" | "two" | "any") => {
+    // 按时间排序
     const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
-    const sortedBaseItems = baseItems ? [...baseItems].sort((a, b) => a.guess_time - b.guess_time) : [];
-    
-    return sortedItems.map((item, index) => {
-      // 获取当前时间点之前的所有数据（包括基底数据）
+    const sumLen = items.length; // 应该是固定的数据量
+
+    // 生成胜率图表数据
+    const winRateData = sortedItems.map((item, index) => {
+      // 计算到当前项为止的所有数据
       let currentItems = sortedItems.slice(0, index + 1);
       
-      // 找到当前项的时间戳
-      const currentTime = item.guess_time;
-      
-      // 从基底数据中筛选出时间早于当前项的数据
-      const relevantBaseItems = sortedBaseItems.filter(baseItem => baseItem.guess_time < currentTime);
-      
-      // 合并基底数据和当前数据进行胜率计算
-      const itemsForCalculation = [...relevantBaseItems, ...currentItems];
+      if (baseItems?.length > 0) {
+        // 我们需要保持总数为 sumLen
+        // 从 baseItems 中取 (sumLen - currentItems.length) 条数据
+        const needCount = sumLen - currentItems.length;
+        if (needCount > 0) {
+          // 从 baseItems 中取数据，从后往前取
+          // clone
+          const cloneBaseItems = JSON.parse(JSON.stringify(baseItems));
+          // reverse
+          const reverseBaseItems = cloneBaseItems.reverse();
+          // slice
+          const startIndex = Math.max(reverseBaseItems.length - needCount, 1);
+          const relevantBaseItems = reverseBaseItems.slice(startIndex);
+          currentItems = [...relevantBaseItems, ...currentItems];
+        }
+      }
 
-      const winRate = calculateWinRate(itemsForCalculation, currentWinType);
+      const winRate = calculateWinRate(currentItems, currentWinType);
 
       const date = new Date(item.guess_time * 1000);
       const today = new Date();
@@ -152,6 +162,8 @@ export const PredictCompare = () => {
         winRate: Number(winRate.toFixed(2))
       };
     });
+
+    return winRateData;
   };
 
   // 处理胜率类型变化
@@ -235,7 +247,7 @@ export const PredictCompare = () => {
   // 获取模型数据
   const fetchModelData = async (modelType: LotAiGuessType) => {
     try {
-      const totalSize = dataLimit * 2; // 修改为数据量的两倍，因为基底数据量等于数据量
+      const totalSize = dataLimit * 2; // 修改为数据量的两倍
       const params: any = {
         page: 1,
         page_size: totalSize,
@@ -244,28 +256,20 @@ export const PredictCompare = () => {
 
       // 添加时间范围参数
       if (timeRange[0] && timeRange[1]) {
-        // 计算基底数据需要的时间范围（每5分钟一条数据）
-        const baseDataMinutes = dataLimit * 5; // 使用dataLimit作为基底数据量
-        const baseStartTime = timeRange[0].subtract(baseDataMinutes, 'minute');
-        
-        params.start_time = Math.floor(baseStartTime.valueOf() / 1000);
+        params.start_time = Math.floor(timeRange[0].valueOf() / 1000);
         params.end_time = Math.floor(timeRange[1].valueOf() / 1000);
-        params.page_size = 10000; // 当选择时间范围时，自动设置为10000条数据
       }
 
-      // 获取数据
-      const response = await axiosServices.get("/client/lot/get_ai_guess_list", {
-        params,
-      });
+      const response = await axiosServices.get("/client/lot/get_ai_guess_list", { params });
 
       const allData = response.data.data.data;
       const displayData = allData.slice(0, dataLimit);
-      const baseData = allData.slice(dataLimit, totalSize); // 使用dataLimit作为分界点
+      const baseData = allData.slice(dataLimit, totalSize); // 使用 dataLimit 作为分界点
 
       return {
         modelType,
         data: displayData,
-        baseData: baseData,
+        baseData: baseData, // 这就相当于 PredictChart 中的 beforeData
         balanceData: generateBalanceData(displayData),
         winRateData: generateWinRateData(displayData, baseData, winType)
       };
