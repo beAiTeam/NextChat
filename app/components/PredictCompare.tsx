@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, DatePicker, Input, Radio, Space, Table } from "antd";
+import { Button, Card, DatePicker, Input, List, Modal, Radio, Space, Table, Tag } from "antd";
 import { Dayjs } from "dayjs";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useRef, useState } from "react";
@@ -50,10 +50,13 @@ export const PredictCompare = () => {
   const [isSettingsLoaded, setIsSettingsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [dataLimit, setDataLimit] = useState(50);
+  const [baseDataLimit, setBaseDataLimit] = useState(50);
   const [loadMoreCount, setLoadMoreCount] = useState(0);
   const [modelsData, setModelsData] = useState<ModelData[]>([]);
   const [winType, setWinType] = useState<"current" | "two" | "any">("current");
   const [timeRange, setTimeRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
+  const [isDetailsModalVisible, setIsDetailsModalVisible] = useState(false);
+  const [selectedModelData, setSelectedModelData] = useState<ModelData | null>(null);
   const [betConfig, setBetConfig] = useState<BetConfig>(() => {
     try {
       const savedConfig = localStorage.getItem("betConfig");
@@ -63,12 +66,22 @@ export const PredictCompare = () => {
     }
   });
 
+  // 生成颜色函数
+  const generateColor = (index: number) => {
+    const colors = [
+      '#2593fc', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#13c2c2',
+      '#eb2f96', '#1890ff', '#fa8c16', '#a0d911', '#9254de', '#36cfc9'
+    ];
+    return colors[index % colors.length];
+  };
+
   // 从localStorage读取保存的设置
   useEffect(() => {
     if (hasLoadedFromStorage.current) return;
     
     const savedDataLimit = localStorage.getItem("predict_data_limit");
     const savedWinType = localStorage.getItem("predict_win_type");
+    const savedBaseDataLimit = localStorage.getItem("predict_base_data_limit");
 
     if (savedDataLimit) {
       setDataLimit(parseInt(savedDataLimit));
@@ -115,33 +128,18 @@ export const PredictCompare = () => {
 
   // 生成胜率数据
   const generateWinRateData = (items: PredictItem[], baseItems: PredictItem[], currentWinType: "current" | "two" | "any") => {
-    // 按时间排序
-    const sortedItems = [...items].sort((a, b) => a.guess_time - b.guess_time);
-    const sumLen = items.length; // 应该是固定的数据量
-
-    // 生成胜率图表数据
-    const winRateData = sortedItems.map((item, index) => {
-      // 计算到当前项为止的所有数据
-      let currentItems = sortedItems.slice(0, index + 1);
+    // 按时间排序并合并基底数据和展示数据
+    const allItems = [...baseItems, ...items].sort((a, b) => a.guess_time - b.guess_time);
+    
+    // 只对展示数据的时间点生成胜率数据
+    const winRateData = items.map((item) => {
+      // 找到当前项在完整数据中的位置
+      const currentIndex = allItems.findIndex(i => i.guess_time === item.guess_time);
+      if (currentIndex === -1) return null;
       
-      if (baseItems?.length > 0) {
-        // 我们需要保持总数为 sumLen
-        // 从 baseItems 中取 (sumLen - currentItems.length) 条数据
-        const needCount = sumLen - currentItems.length;
-        if (needCount > 0) {
-          // 从 baseItems 中取数据，从后往前取
-          // clone
-          const cloneBaseItems = JSON.parse(JSON.stringify(baseItems));
-          // reverse
-          const reverseBaseItems = cloneBaseItems.reverse();
-          // slice
-          const startIndex = Math.max(reverseBaseItems.length - needCount, 1);
-          const relevantBaseItems = reverseBaseItems.slice(startIndex);
-          currentItems = [...relevantBaseItems, ...currentItems];
-        }
-      }
-
-      const winRate = calculateWinRate(currentItems, currentWinType);
+      // 计算从开始到当前位置的所有数据的胜率
+      const itemsToCalculate = allItems.slice(0, currentIndex + 1);
+      const winRate = calculateWinRate(itemsToCalculate, currentWinType);
 
       const date = new Date(item.guess_time * 1000);
       const today = new Date();
@@ -161,7 +159,7 @@ export const PredictCompare = () => {
         time: timeStr,
         winRate: Number(winRate.toFixed(2))
       };
-    });
+    }).filter(item => item !== null) as Array<{ time: string; winRate: number }>;
 
     return winRateData;
   };
@@ -247,7 +245,7 @@ export const PredictCompare = () => {
   // 获取模型数据
   const fetchModelData = async (modelType: LotAiGuessType) => {
     try {
-      const totalSize = dataLimit * 2; // 修改为数据量的两倍
+      const totalSize = dataLimit + baseDataLimit;
       const params: any = {
         page: 1,
         page_size: totalSize,
@@ -263,13 +261,15 @@ export const PredictCompare = () => {
       const response = await axiosServices.get("/client/lot/get_ai_guess_list", { params });
 
       const allData = response.data.data.data;
-      const displayData = allData.slice(0, dataLimit);
-      const baseData = allData.slice(dataLimit, totalSize); // 使用 dataLimit 作为分界点
+      // 由于接口返回的是倒序，我们需要先反转数据
+      const sortedData = [...allData].reverse();
+      const displayData = sortedData.slice(baseDataLimit, totalSize);
+      const baseData = sortedData.slice(0, baseDataLimit);
 
       return {
         modelType,
         data: displayData,
-        baseData: baseData, // 这就相当于 PredictChart 中的 beforeData
+        baseData: baseData,
         balanceData: generateBalanceData(displayData),
         winRateData: generateWinRateData(displayData, baseData, winType)
       };
@@ -319,6 +319,11 @@ export const PredictCompare = () => {
 
   // 处理加载更多数据
   const handleLoadMore = async () => {
+    if (loadMoreCount <= 0) {
+      toast.error('请输入要加载的期数');
+      return;
+    }
+    
     setIsLoading(true);
     try {
       const modelTypes = [
@@ -328,14 +333,37 @@ export const PredictCompare = () => {
         LotAiGuessType.Ai5_Gemini_Plus
       ];
       
-      // 更新数据量，累加新的数据量
       const newDataLimit = dataLimit + loadMoreCount;
-      setDataLimit(newDataLimit);
+      const totalDataNeeded = newDataLimit + baseDataLimit;
       
       const results = await Promise.all(
         modelTypes.map(async modelType => {
           try {
-            return await fetchModelData(modelType);
+            const params: any = {
+              page: 1,
+              page_size: totalDataNeeded,
+              guess_type: modelType,
+            };
+
+            if (timeRange[0] && timeRange[1]) {
+              params.start_time = Math.floor(timeRange[0].valueOf() / 1000);
+              params.end_time = Math.floor(timeRange[1].valueOf() / 1000);
+            }
+
+            const response = await axiosServices.get("/client/lot/get_ai_guess_list", { params });
+            const allData = response.data.data.data;
+            // 由于接口返回的是倒序，我们需要先反转数据
+            const sortedData = [...allData].reverse();
+            const displayData = sortedData.slice(baseDataLimit, totalDataNeeded);
+            const baseData = sortedData.slice(0, baseDataLimit);
+
+            return {
+              modelType,
+              data: displayData,
+              baseData: baseData,
+              balanceData: generateBalanceData(displayData),
+              winRateData: generateWinRateData(displayData, baseData, winType)
+            };
           } catch (error) {
             console.error(`获取模型 ${modelType} 数据失败:`, error);
             return null;
@@ -344,33 +372,85 @@ export const PredictCompare = () => {
       );
       
       const validResults = results.filter((result): result is ModelData => result !== null);
-      console.log('获取到的模型数据:', validResults);
       
       if (validResults.length === 0) {
-        console.error('没有获取到任何有效的模型数据');
+        toast.error('没有获取到任何有效的模型数据');
         return;
       }
       
       setModelsData(validResults);
-      // 重置加载更多计数
-      setLoadMoreCount(0);
+      setDataLimit(newDataLimit);
+      toast.success(`成功加载${loadMoreCount}期数据`);
     } catch (error) {
       console.error("加载更多数据失败:", error);
+      toast.error('加载更多数据失败');
     } finally {
       setIsLoading(false);
     }
   };
 
+  // 生成胜率计算详情数据
+  const generateWinRateDetails = (modelData: ModelData) => {
+    const allItems = [...modelData.baseData, ...modelData.data].sort((a, b) => a.guess_time - b.guess_time);
+    
+    // 处理所有数据（包括基底数据和展示数据）
+    return allItems.map((item, index) => {
+      const itemsToCalculate = allItems.slice(0, index + 1);
+      const validItems = itemsToCalculate.filter(
+        (item) => item.ext_result && item.ext_result.length > 0
+      );
+      
+      const winCount = validItems.filter((item) => {
+        const guessResult = formatGuessResult(item.guess_result);
+        if (!guessResult || !item.ext_result) return false;
+
+        if (winType === "current") {
+          return checkCurrentPeriodMatch(guessResult, item.ext_result, item.guess_period);
+        } else if (winType === "two") {
+          return checkTwoPeriodsMatch(guessResult, item.ext_result);
+        } else {
+          return checkThreePeriodsMatch(guessResult, item.ext_result);
+        }
+      }).length;
+
+      const winRate = validItems.length > 0 ? (winCount / validItems.length) * 100 : 0;
+      const date = new Date(item.guess_time * 1000);
+
+      return {
+        time: date.toLocaleString("zh-CN"),
+        period: item.guess_period,
+        winRate: Number(winRate.toFixed(2)),
+        totalItems: itemsToCalculate.length,
+        validItems: validItems.length,
+        winCount: winCount,
+        isBaseData: index < modelData.baseData.length,
+        guessResult: formatGuessResult(item.guess_result),
+        drawResult: item.ext_result && item.ext_result.length > 0 ? 
+          item.ext_result.find(result => result.draw_number === item.guess_period)?.full_number : null,
+        isWin: (() => {
+          const guessResult = formatGuessResult(item.guess_result);
+          if (!guessResult || !item.ext_result) return false;
+
+          if (winType === "current") {
+            return checkCurrentPeriodMatch(guessResult, item.ext_result, item.guess_period);
+          } else if (winType === "two") {
+            return checkTwoPeriodsMatch(guessResult, item.ext_result);
+          } else {
+            return checkThreePeriodsMatch(guessResult, item.ext_result);
+          }
+        })()
+      };
+    });
+  };
+
+  // 处理查看详情按钮点击
+  const handleViewDetails = (modelData: ModelData) => {
+    setSelectedModelData(modelData);
+    setIsDetailsModalVisible(true);
+  };
+
   // 渲染余额变化趋势图
   const renderBalanceChart = () => {
-    const generateColor = (index: number) => {
-      const colors = [
-        '#2593fc', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#13c2c2',
-        '#eb2f96', '#1890ff', '#fa8c16', '#a0d911', '#9254de', '#36cfc9'
-      ];
-      return colors[index % colors.length];
-    };
-
     const allTimes = new Set<string>();
     modelsData.forEach(modelData => {
       modelData.balanceData.forEach(item => {
@@ -451,16 +531,8 @@ export const PredictCompare = () => {
     return option;
   };
 
-  // 渲染胜率趋势图
-  const renderWinRateChart = () => {
-    const generateColor = (index: number) => {
-      const colors = [
-        '#2593fc', '#52c41a', '#ff4d4f', '#faad14', '#722ed1', '#13c2c2',
-        '#eb2f96', '#1890ff', '#fa8c16', '#a0d911', '#9254de', '#36cfc9'
-      ];
-      return colors[index % colors.length];
-    };
-
+  // 渲染胜率趋势图配置
+  const getWinRateChartOption = () => {
     const allTimes = new Set<string>();
     let maxWinRate = 0;
     let minWinRate = 100;
@@ -484,7 +556,7 @@ export const PredictCompare = () => {
       return dateA.getTime() - dateB.getTime();
     });
 
-    const option = {
+    return {
       title: {
         text: '胜率趋势对比',
         left: 'center'
@@ -550,8 +622,6 @@ export const PredictCompare = () => {
         }
       }))
     };
-
-    return option;
   };
 
   // 生成表格数据
@@ -673,6 +743,12 @@ export const PredictCompare = () => {
                   onChange={(e) => setDataLimit(parseInt(e.target.value) || 0)}
                   style={{ width: 200 }}
                 />
+                <Input
+                  addonBefore="基底数"
+                  value={baseDataLimit}
+                  onChange={(e) => setBaseDataLimit(parseInt(e.target.value) || 0)}
+                  style={{ width: 200 }}
+                />
               </Space>
               <Space>
                 <Input
@@ -734,7 +810,72 @@ export const PredictCompare = () => {
                   </Space>
                 }
               >
-                <ReactECharts option={renderWinRateChart()} style={{ height: '600px' }} />
+                <div style={{ marginBottom: '16px', textAlign: 'right' }}>
+                  <Space>
+                    {modelsData.map((modelData, index) => (
+                      <Button
+                        key={modelData.modelType}
+                        type="link"
+                        onClick={() => handleViewDetails(modelData)}
+                        style={{ color: generateColor(index) }}
+                      >
+                        查看{modelData.modelType}详情
+                      </Button>
+                    ))}
+                  </Space>
+                </div>
+                <ReactECharts option={getWinRateChartOption()} style={{ height: '600px' }} />
+                
+                <Modal
+                  title="胜率计算详情"
+                  open={isDetailsModalVisible}
+                  onCancel={() => setIsDetailsModalVisible(false)}
+                  width={800}
+                  footer={null}
+                >
+                  {selectedModelData && (
+                    <List
+                      dataSource={generateWinRateDetails(selectedModelData)}
+                      renderItem={(item: any) => (
+                        <List.Item>
+                          <List.Item.Meta
+                            title={
+                              <Space>
+                                <span>期号: {item.period}</span>
+                                <span>时间: {item.time}</span>
+                                <Tag color={item.isBaseData ? 'blue' : 'green'}>
+                                  {item.isBaseData ? '基底数据' : '展示数据'}
+                                </Tag>
+                                {item.guessResult && (
+                                  <Tag color={item.isWin ? '#52c41a' : '#ff4d4f'}>
+                                    预测: {item.guessResult}
+                                  </Tag>
+                                )}
+                                {item.drawResult && (
+                                  <Tag color="purple">
+                                    开奖: {item.drawResult}
+                                  </Tag>
+                                )}
+                              </Space>
+                            }
+                            description={
+                              <Space direction="vertical">
+                                <span>累计胜率: {item.winRate}%</span>
+                                <span>
+                                  胜场/有效场次: {item.winCount}/{item.validItems}
+                                  {item.validItems < item.totalItems && 
+                                    `（总场次: ${item.totalItems}）`
+                                  }
+                                </span>
+                              </Space>
+                            }
+                          />
+                        </List.Item>
+                      )}
+                      style={{ maxHeight: '60vh', overflowY: 'auto' }}
+                    />
+                  )}
+                </Modal>
               </Card>
               <Card title="预测结果对比">
                 <Table
