@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, DatePicker, Input, List, Modal, Radio, Space, Table, Tag } from "antd";
+import { Button, Card, DatePicker, Input, Radio, Space, Table } from "antd";
 import { Dayjs } from "dayjs";
 import ReactECharts from 'echarts-for-react';
 import { useEffect, useRef, useState } from "react";
@@ -1223,20 +1223,6 @@ export const PredictCompare = () => {
                   </Space>
                 }
               >
-                <div style={{ marginBottom: '16px', textAlign: 'right' }}>
-                  <Space>
-                    {modelsData.map((modelData, index) => (
-                      <Button
-                        key={modelData.modelType}
-                        type="link"
-                        onClick={() => handleViewDetails(modelData)}
-                        style={{ color: generateColor(index) }}
-                      >
-                        查看{modelData.modelType}详情
-                      </Button>
-                    ))}
-                  </Space>
-                </div>
                 <ReactECharts option={getWinRateChartOption()} style={{ height: '600px' }} />
                 
                 <div style={{ marginTop: '20px' }}>
@@ -1246,56 +1232,7 @@ export const PredictCompare = () => {
                   <ReactECharts option={getBestWinRateChartOption()} style={{ height: '600px' }} />
                 </div>
                 
-                <Modal
-                  title="胜率计算详情"
-                  open={isDetailsModalVisible}
-                  onCancel={() => setIsDetailsModalVisible(false)}
-                  width={800}
-                  footer={null}
-                >
-                  {selectedModelData && (
-                    <List
-                      dataSource={generateWinRateDetails(selectedModelData)}
-                      renderItem={(item: any) => (
-                        <List.Item>
-                          <List.Item.Meta
-                            title={
-                              <Space>
-                                <span>期号: {item.period}</span>
-                                <span>时间: {item.time}</span>
-                                <Tag color={item.isBaseData ? 'blue' : 'green'}>
-                                  {item.isBaseData ? '基底数据' : '展示数据'}
-                                </Tag>
-                                {item.guessResult && (
-                                  <Tag color={item.isWin ? '#52c41a' : '#ff4d4f'}>
-                                    预测: {item.guessResult}
-                                  </Tag>
-                                )}
-                                {item.drawResult && (
-                                  <Tag color="purple">
-                                    开奖: {item.drawResult}
-                                  </Tag>
-                                )}
-                              </Space>
-                            }
-                            description={
-                              <Space direction="vertical">
-                                <span>累计胜率: {item.winRate}%</span>
-                                <span>
-                                  胜场/有效场次: {item.winCount}/{item.validItems}
-                                  {item.validItems < item.totalItems && 
-                                    `（总场次: ${item.totalItems}）`
-                                  }
-                                </span>
-                              </Space>
-                            }
-                          />
-                        </List.Item>
-                      )}
-                      style={{ maxHeight: '60vh', overflowY: 'auto' }}
-                    />
-                  )}
-                </Modal>
+              
               </Card>
               <Card title="预测结果对比">
                 <Table
