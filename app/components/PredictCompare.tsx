@@ -189,6 +189,7 @@ export const PredictCompare = () => {
           formatGuessResult(currentItem.guess_result),
           currentItem.ext_result,
           betConfig,
+          winType
         );
         totalBalance += balanceResult.balance;
       });
@@ -624,6 +625,150 @@ export const PredictCompare = () => {
     };
   };
 
+  // 生成最佳胜率图配置
+  const getBestWinRateChartOption = () => {
+    if (!modelsData.length) return {};
+
+    const allTimes = new Set<string>();
+    let maxWinRate = 0;
+    let minWinRate = 100;
+
+    // 找出所有时间点
+    modelsData.forEach(modelData => {
+      modelData.winRateData.forEach(item => {
+        allTimes.add(item.time);
+      });
+    });
+
+    const timeArray = Array.from(allTimes).sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+    // 计算每个时间点的最佳胜率和对应模型
+    const bestRateData = timeArray.map((time, index) => {
+      let bestRate = 0;
+      let bestModel = '';
+      
+      modelsData.forEach(modelData => {
+        const dataPoint = modelData.winRateData.find(item => item.time === time);
+        if (dataPoint && dataPoint.winRate > bestRate) {
+          bestRate = dataPoint.winRate;
+          bestModel = modelData.modelType;
+        }
+      });
+
+      // 更新全局最大最小值
+      if (bestRate > maxWinRate) maxWinRate = bestRate;
+      if (bestRate < minWinRate) minWinRate = bestRate;
+
+      // 检查是否是模型切换点
+      let isChangePoint = false;
+      if (index > 0) {
+        const prevTime = timeArray[index - 1];
+        let prevBestModel = '';
+        let prevBestRate = 0;
+        
+        modelsData.forEach(modelData => {
+          const prevDataPoint = modelData.winRateData.find(item => item.time === prevTime);
+          if (prevDataPoint && prevDataPoint.winRate > prevBestRate) {
+            prevBestRate = prevDataPoint.winRate;
+            prevBestModel = modelData.modelType;
+          }
+        });
+
+        isChangePoint = prevBestModel !== bestModel;
+      }
+
+      return {
+        time,
+        winRate: bestRate,
+        model: bestModel,
+        isChangePoint
+      };
+    });
+
+    // 计算Y轴范围，各扩展5%
+    const yAxisMin = Math.max(0, minWinRate - 5);
+    const yAxisMax = Math.min(100, maxWinRate + 5);
+
+    return {
+      title: {
+        text: '最佳胜率趋势',
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis' as const,
+        formatter: function(params: any) {
+          if (!Array.isArray(params)) return '';
+          const dataPoint = bestRateData.find(d => d.time === params[0].name);
+          if (!dataPoint) return '';
+          
+          return `${params[0].name}<br/>
+                  最佳模型: ${dataPoint.model}<br/>
+                  胜率: ${dataPoint.winRate.toFixed(2)}%
+                  ${dataPoint.isChangePoint ? '<br/><span style="color: #ff4d4f">模型切换点</span>' : ''}`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 100,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: timeArray,
+        axisLabel: {
+          rotate: 45,
+          interval: Math.floor(timeArray.length / 10)
+        }
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: '胜率(%)',
+        min: yAxisMin,
+        max: yAxisMax
+      },
+      series: [
+        {
+          name: '最佳胜率',
+          type: 'line' as const,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: (val: any, params: any) => {
+            return bestRateData[params.dataIndex].isChangePoint ? 10 : 6;
+          },
+          data: bestRateData.map(item => ({
+            value: item.winRate,
+            itemStyle: {
+              color: item.isChangePoint ? '#ff4d4f' : '#52c41a'
+            }
+          })),
+          lineStyle: {
+            width: 2,
+            color: '#52c41a'
+          },
+          markPoint: {
+            symbol: 'circle',
+            symbolSize: 8,
+            data: bestRateData
+              .filter(item => item.isChangePoint)
+              .map(item => ({
+                name: '切换点',
+                coord: [item.time, item.winRate],
+                itemStyle: {
+                  color: '#ff4d4f'
+                }
+              }))
+          }
+        }
+      ]
+    };
+  };
+
   // 生成表格数据
   const generateTableData = () => {
     if (!modelsData.length) return [];
@@ -825,6 +970,10 @@ export const PredictCompare = () => {
                   </Space>
                 </div>
                 <ReactECharts option={getWinRateChartOption()} style={{ height: '600px' }} />
+                
+                <div style={{ marginTop: '20px' }}>
+                  <ReactECharts option={getBestWinRateChartOption()} style={{ height: '600px' }} />
+                </div>
                 
                 <Modal
                   title="胜率计算详情"

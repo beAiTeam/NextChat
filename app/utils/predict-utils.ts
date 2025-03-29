@@ -216,7 +216,8 @@ export interface BalanceResult {
 export const calculateBalanceChange = (
   prediction: string,
   drawResults: DrawResult[] | null,
-  betConfig: BetConfig
+  betConfig: BetConfig,
+  winType: "current" | "two" | "any" = "current" // 默认为当期
 ): BalanceResult => {
   if (!drawResults || drawResults.length === 0 || !prediction || prediction === "暂无结果") {
     return {
@@ -225,8 +226,9 @@ export const calculateBalanceChange = (
     };
   }
 
-  // 添加长度检查，必须等于3才计算
-  if (drawResults.length !== 3) {
+  // 根据winType检查开奖结果长度
+  const requiredLength = winType === "current" ? 1 : winType === "two" ? 2 : 3;
+  if (drawResults.length < requiredLength) {
     return {
       balance: 0,
       details: "等待开奖"
@@ -252,12 +254,19 @@ export const calculateBalanceChange = (
     console.error("Failed to get continue betting config:", e);
   }
 
-  // 遍历三期开奖结果
-  for (let i = 0; i < 3; i++) {
+  // 遍历开奖结果
+  for (let i = 0; i < requiredLength; i++) {
     // 如果已经中奖且配置为不继续投注，则不再继续
     if (hasWon && !continueBetting) break;
 
-    const isWin = checkPeriodMatch(prediction, drawResults[i]);
+    let isWin = false;
+    if (winType === "current") {
+      isWin = checkCurrentPeriodMatch(prediction, [drawResults[i]], drawResults[i].draw_number);
+    } else if (winType === "two") {
+      isWin = checkTwoPeriodsMatch(prediction, drawResults.slice(0, i + 1));
+    } else {
+      isWin = checkThreePeriodsMatch(prediction, drawResults.slice(0, i + 1));
+    }
 
     if (isWin) {
       if (i === 0) {
@@ -266,12 +275,12 @@ export const calculateBalanceChange = (
         balanceDetails.push(`+${(62.7 * x).toFixed(1)}`);
       } else if (i === 1) {
         // 第二期中奖
-        totalBalance += 62.7 * y ;
-        balanceDetails.push(`+${(62.7 * y  ).toFixed(1)}`);
+        totalBalance += 62.7 * y;
+        balanceDetails.push(`+${(62.7 * y).toFixed(1)}`);
       } else {
         // 第三期中奖
-        totalBalance += 62.7 * z  ;
-        balanceDetails.push(`+${(62.7 * z  ).toFixed(1)}`);
+        totalBalance += 62.7 * z;
+        balanceDetails.push(`+${(62.7 * z).toFixed(1)}`);
       }
       hasWon = true;
     } else {

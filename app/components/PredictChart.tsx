@@ -330,6 +330,7 @@ const PredictChart = () => {
           formatGuessResult(currentItem.guess_result),
           currentItem.ext_result,
           betConfig,
+          currentWinType
         );
         totalBalance += balanceResult.balance;
       });
@@ -409,6 +410,7 @@ const PredictChart = () => {
         formatGuessResult(item.guess_result),
         item.ext_result,
         betConfig,
+        winType
       );
 
       // 更新当前余额
