@@ -1,13 +1,13 @@
 /* eslint-disable @next/next/no-page-custom-font */
-import "./styles/globals.scss";
-import "./styles/markdown.scss";
-import "./styles/highlight.scss";
-import { getClientConfig } from "./config/client";
-import type { Metadata, Viewport } from "next";
+import { GoogleAnalytics, GoogleTagManager } from "@next/third-parties/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { GoogleTagManager, GoogleAnalytics } from "@next/third-parties/google";
-import { getServerSideConfig } from "./config/server";
+import type { Metadata, Viewport } from "next";
 import { Toaster } from 'react-hot-toast';
+import { getClientConfig } from "./config/client";
+import { getServerSideConfig } from "./config/server";
+import "./styles/globals.scss";
+import "./styles/highlight.scss";
+import "./styles/markdown.scss";
 
 export const metadata: Metadata = {
   title: "NextChat",
@@ -19,9 +19,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 1,
+  width: 0,
+  initialScale: 0,
+  maximumScale: 20,
+  userScalable: true,
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#fafafa" },
     { media: "(prefers-color-scheme: dark)", color: "#151515" },
@@ -39,10 +40,10 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <meta name="config" content={JSON.stringify(getClientConfig())} />
-        <meta
-          name="viewport"
-          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-        />
+        {/*<meta*/}
+        {/*  name="viewport"*/}
+        {/*  content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"*/}
+        {/*/>*/}
         <link
           rel="manifest"
           href="/site.webmanifest"

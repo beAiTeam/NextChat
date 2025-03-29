@@ -41,7 +41,50 @@ interface ModelData {
   data: PredictItem[];
   baseData: PredictItem[];
   balanceData: Array<{ time: string; balance: number }>;
-  winRateData: Array<{ time: string; winRate: number }>;
+  winRateData: Array<{ time: string; guess_time: number; winRate: number }>;
+}
+
+// 添加图表数据接口
+interface ChartData {
+  timeArray: string[];
+  balanceChart: {
+    series: Array<{
+      name: string;
+      data: (number | null)[];
+      color: string;
+    }>;
+  };
+  winRateChart: {
+    series: Array<{
+      name: string;
+      data: (number | null)[];
+      color: string;
+    }>;
+    yAxisMin: number;
+    yAxisMax: number;
+  };
+  bestBalanceChart: {
+    timeArray: string[];
+    data: Array<{
+      time: string;
+      balance: number;
+      model: string;
+      isChangePoint: boolean;
+    }>;
+    yAxisMin: number;
+    yAxisMax: number;
+  };
+  bestWinRateChart: {
+    timeArray: string[];
+    data: Array<{
+      time: string;
+      winRate: number;
+      model: string;
+      isChangePoint: boolean;
+    }>;
+    yAxisMin: number;
+    yAxisMax: number;
+  };
 }
 
 export const PredictCompare = () => {
@@ -65,6 +108,7 @@ export const PredictCompare = () => {
       return { x: 1, y: 2, z: 4 };
     }
   });
+  const [chartData, setChartData] = useState<ChartData | null>(null);
 
   // 生成颜色函数
   const generateColor = (index: number) => {
@@ -95,13 +139,13 @@ export const PredictCompare = () => {
   }, []); // 只在组件挂载时读取一次
 
   // 当设置变化时保存到localStorage
-  useEffect(() => {
-    localStorage.setItem("predict_data_limit", dataLimit.toString());
-  }, [dataLimit]);
+  // useEffect(() => {
+  //   localStorage.setItem("predict_data_limit", dataLimit.toString());
+  // }, [dataLimit]);
 
-  useEffect(() => {
-    localStorage.setItem("betConfig", JSON.stringify(betConfig));
-  }, [betConfig]);
+  // useEffect(() => {
+  //   localStorage.setItem("betConfig", JSON.stringify(betConfig));
+  // }, [betConfig]);
 
   // 计算胜率
   const calculateWinRate = (items: PredictItem[], currentWinType: "current" | "two" | "any"): number => {
@@ -163,42 +207,34 @@ export const PredictCompare = () => {
       const winRate = validItems.length > 0 ? (winCount / validItems.length) * 100 : 0;
 
       const date = new Date(currentItem.guess_time * 1000);
-      const today = new Date();
-      let timeStr;
-
-      if (date.toDateString() === today.toDateString()) {
-        timeStr = date.toLocaleTimeString("zh-CN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-      } else {
-        timeStr = date.toLocaleString("zh-CN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-      }
-
       return {
-        time: timeStr,
+        time: date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }),
+        guess_time: currentItem.guess_time,
         winRate: Number(winRate.toFixed(2))
       };
-    }).filter(item => item !== null) as Array<{ time: string; winRate: number }>;
+    }).filter(item => item !== null) as Array<{ time: string; guess_time: number; winRate: number }>;
 
-    return winRateData;
+    // 按照guess_time排序
+    return winRateData.sort((a, b) => a.guess_time - b.guess_time);
   };
 
   // 处理胜率类型变化
   const handleWinTypeChange = (newWinType: "current" | "two" | "any") => {
     setWinType(newWinType);
-    if (modelsData.length > 0) {
-      const updatedModelsData = modelsData.map(modelData => ({
-        ...modelData,
-        winRateData: generateWinRateData(modelData.data, modelData.baseData, newWinType)
-      }));
-      setModelsData(updatedModelsData);
-    }
+    // if (modelsData.length > 0) {
+    //   const updatedModelsData = modelsData.map(modelData => ({
+    //     ...modelData,
+    //     winRateData: generateWinRateData(modelData.data, modelData.baseData, newWinType)
+    //   }));
+    //   setModelsData(updatedModelsData);
+    // }
   };
 
   // 生成余额变化数据
@@ -220,21 +256,15 @@ export const PredictCompare = () => {
       });
 
       const date = new Date(item.guess_time * 1000);
-      const today = new Date();
-      let timeStr;
-
-      if (date.toDateString() === today.toDateString()) {
-        timeStr = date.toLocaleTimeString("zh-CN", {
+      return {
+        time: date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
           hour: "2-digit",
           minute: "2-digit",
-          second: "2-digit",
-        });
-      } else {
-        timeStr = date.toLocaleString("zh-CN");
-      }
-
-      return {
-        time: timeStr,
+          second: "2-digit"
+        }),
         balance: Math.floor(totalBalance * 100) / 100,
       };
     });
@@ -259,13 +289,13 @@ export const PredictCompare = () => {
       console.error("Failed to save bet config:", error);
     }
     // 重新计算所有模型的余额数据
-    if (modelsData.length > 0) {
-      const updatedModelsData = modelsData.map(modelData => ({
-        ...modelData,
-        balanceData: generateBalanceData(modelData.data)
-      }));
-      setModelsData(updatedModelsData);
-    }
+    // if (modelsData.length > 0) {
+    //   const updatedModelsData = modelsData.map(modelData => ({
+    //     ...modelData,
+    //     balanceData: generateBalanceData(modelData.data)
+    //   }));
+    //   setModelsData(updatedModelsData);
+    // }
   };
 
   // 获取模型数据
@@ -305,6 +335,210 @@ export const PredictCompare = () => {
     }
   };
 
+  // 处理分析数据
+  const processChartData = (modelDataArray: ModelData[]): ChartData => {
+    const allTimes = new Set<string>();
+    let maxWinRate = 0;
+    let minWinRate = 100;
+
+    // 收集所有时间点
+    modelDataArray.forEach(modelData => {
+      modelData.winRateData.forEach(item => {
+        allTimes.add(item.time);
+      });
+    });
+
+    // 排序时间数组
+    const timeArray = Array.from(allTimes).sort((a, b) => {
+      const timeA = modelDataArray[0].data.find(item => {
+        const date = new Date(item.guess_time * 1000);
+        return date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }) === a;
+      })?.guess_time || 0;
+      
+      const timeB = modelDataArray[0].data.find(item => {
+        const date = new Date(item.guess_time * 1000);
+        return date.toLocaleString("zh-CN", {
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit"
+        }) === b;
+      })?.guess_time || 0;
+      
+      return timeA - timeB;
+    });
+
+    // 处理余额图表数据
+    const balanceChartSeries = modelDataArray.map((modelData, index) => ({
+      name: modelData.modelType,
+      data: timeArray.map(time => {
+        const dataPoint = modelData.balanceData.find(item => item.time === time);
+        return dataPoint ? dataPoint.balance : null;
+      }),
+      color: generateColor(index)
+    }));
+
+    // 处理胜率图表数据
+    const winRateChartSeries = modelDataArray.map((modelData, index) => {
+      const data = timeArray.map(time => {
+        const dataPoint = modelData.winRateData.find(item => item.time === time);
+        if (dataPoint) {
+          if (dataPoint.winRate > maxWinRate) maxWinRate = dataPoint.winRate;
+          if (dataPoint.winRate < minWinRate) minWinRate = dataPoint.winRate;
+          return dataPoint.winRate;
+        }
+        return null;
+      });
+      return {
+        name: modelData.modelType,
+        data,
+        color: generateColor(index)
+      };
+    });
+
+    // 计算最佳胜率数据
+    const bestRateData = timeArray.map((time, index) => {
+      let bestRate = 0;
+      let bestModel = '';
+      
+      modelDataArray.forEach(modelData => {
+        const dataPoint = modelData.winRateData.find(item => item.time === time);
+        if (dataPoint && dataPoint.winRate > bestRate) {
+          bestRate = dataPoint.winRate;
+          bestModel = modelData.modelType;
+        }
+      });
+
+      // 检查是否是模型切换点
+      let isChangePoint = false;
+      if (index > 0) {
+        const prevTime = timeArray[index - 1];
+        let prevBestModel = '';
+        let prevBestRate = 0;
+        
+        modelDataArray.forEach(modelData => {
+          const prevDataPoint = modelData.winRateData.find(item => item.time === prevTime);
+          if (prevDataPoint && prevDataPoint.winRate > prevBestRate) {
+            prevBestRate = prevDataPoint.winRate;
+            prevBestModel = modelData.modelType;
+          }
+        });
+
+        isChangePoint = prevBestModel !== bestModel;
+      }
+
+      return {
+        time,
+        winRate: bestRate,
+        model: bestModel,
+        isChangePoint
+      };
+    });
+
+    // 计算最佳余额数据
+    let currentBalance = 0;
+    let maxBalance = -Infinity;
+    let minBalance = Infinity;
+    const bestBalanceData = timeArray.map((time, index) => {
+      let bestRate = 0;
+      let bestModel = '';
+      let bestModelData: ModelData | null = null;
+      let bestDataIndex = -1;
+      
+      // 找出当前时间点胜率最高的模型
+      for (const modelData of modelDataArray) {
+        const winRatePoint = modelData.winRateData[index];
+        if (winRatePoint && winRatePoint.winRate > bestRate) {
+          bestRate = winRatePoint.winRate;
+          bestModel = modelData.modelType;
+          bestModelData = modelData;
+          bestDataIndex = index;
+        }
+      }
+
+      // 如果找到了最佳模型,计算余额变化
+      if (bestModelData && bestDataIndex >= 0) {
+        const predictItem = bestModelData.data[bestDataIndex];
+        if (predictItem && predictItem.ext_result) {
+          const guessResult = formatGuessResult(predictItem.guess_result);
+          if (guessResult) {
+            const balanceResult = calculateBalanceChange(
+              guessResult,
+              predictItem.ext_result,
+              betConfig,
+              winType
+            );
+            currentBalance += balanceResult.balance;
+          }
+        }
+      }
+
+      if (currentBalance > maxBalance) maxBalance = currentBalance;
+      if (currentBalance < minBalance) minBalance = currentBalance;
+
+      // 检查是否是模型切换点
+      let isChangePoint = false;
+      if (index > 0) {
+        let prevBestModel = '';
+        let prevBestRate = 0;
+        
+        for (const modelData of modelDataArray) {
+          const prevWinRatePoint = modelData.winRateData[index - 1];
+          if (prevWinRatePoint && prevWinRatePoint.winRate > prevBestRate) {
+            prevBestRate = prevWinRatePoint.winRate;
+            prevBestModel = modelData.modelType;
+          }
+        }
+
+        isChangePoint = prevBestModel !== bestModel;
+      }
+
+      return {
+        time,
+        balance: currentBalance,
+        model: bestModel,
+        isChangePoint
+      };
+    });
+
+    // 计算Y轴范围
+    const winRateRange = maxWinRate - minWinRate;
+    const balanceRange = maxBalance - minBalance;
+    
+    return {
+      timeArray,
+      balanceChart: {
+        series: balanceChartSeries
+      },
+      winRateChart: {
+        series: winRateChartSeries,
+        yAxisMin: Math.max(0, minWinRate - 5),
+        yAxisMax: Math.min(100, maxWinRate + 5)
+      },
+      bestBalanceChart: {
+        timeArray,
+        data: bestBalanceData,
+        yAxisMin: minBalance - balanceRange * 0.05,
+        yAxisMax: maxBalance + balanceRange * 0.05
+      },
+      bestWinRateChart: {
+        timeArray,
+        data: bestRateData,
+        yAxisMin: Math.max(0, minWinRate - 5),
+        yAxisMax: Math.min(100, maxWinRate + 5)
+      }
+    };
+  };
+
   // 开始分析
   const handleAnalysis = async () => {
     setIsLoading(true);
@@ -316,9 +550,6 @@ export const PredictCompare = () => {
         LotAiGuessType.Ai5_Gemini_Plus
       ];
       
-      // 计算需要请求的总数据量
-      // 对于每个点，我们需要往前取baseDataLimit个数据来计算胜率
-      // 所以对于dataLimit个点，我们需要请求 dataLimit + baseDataLimit 个数据
       const totalDataNeeded = dataLimit + baseDataLimit;
       
       const results = await Promise.all(
@@ -330,21 +561,15 @@ export const PredictCompare = () => {
               guess_type: modelType,
             };
 
-            // 添加时间范围参数
             if (timeRange[0] && timeRange[1]) {
               params.start_time = Math.floor(timeRange[0].valueOf() / 1000);
               params.end_time = Math.floor(timeRange[1].valueOf() / 1000);
             }
 
             const response = await axiosServices.get("/client/lot/get_ai_guess_list", { params });
-
             const allData = response.data.data.data;
-            // 由于接口返回的是倒序，我们需要先反转数据
             const sortedData = [...allData].reverse();
-            
-            // 从sortedData中取出最后dataLimit条作为显示数据
             const displayData = sortedData.slice(sortedData.length - dataLimit);
-            // 对于每个显示数据点，我们需要它之前的baseDataLimit条数据来计算胜率
             const baseData = sortedData.slice(0, sortedData.length - dataLimit);
 
             return {
@@ -362,7 +587,6 @@ export const PredictCompare = () => {
       );
       
       const validResults = results.filter((result): result is ModelData => result !== null);
-      console.log('获取到的模型数据:', validResults);
       
       if (validResults.length === 0) {
         console.error('没有获取到任何有效的模型数据');
@@ -370,6 +594,9 @@ export const PredictCompare = () => {
       }
       
       setModelsData(validResults);
+      // 处理图表数据
+      const newChartData = processChartData(validResults);
+      setChartData(newChartData);
     } catch (error) {
       console.error("分析失败:", error);
     } finally {
@@ -412,10 +639,9 @@ export const PredictCompare = () => {
 
             const response = await axiosServices.get("/client/lot/get_ai_guess_list", { params });
             const allData = response.data.data.data;
-            // 由于接口返回的是倒序，我们需要先反转数据
             const sortedData = [...allData].reverse();
-            const displayData = sortedData.slice(baseDataLimit, totalDataNeeded);
-            const baseData = sortedData.slice(0, baseDataLimit);
+            const displayData = sortedData.slice(sortedData.length - dataLimit);
+            const baseData = sortedData.slice(0, sortedData.length - dataLimit);
 
             return {
               modelType,
@@ -439,6 +665,9 @@ export const PredictCompare = () => {
       }
       
       setModelsData(validResults);
+      // 处理图表数据
+      const newChartData = processChartData(validResults);
+      setChartData(newChartData);
       setDataLimit(newDataLimit);
       toast.success(`成功加载${loadMoreCount}期数据`);
     } catch (error) {
@@ -511,19 +740,9 @@ export const PredictCompare = () => {
 
   // 渲染余额变化趋势图
   const renderBalanceChart = () => {
-    const allTimes = new Set<string>();
-    modelsData.forEach(modelData => {
-      modelData.balanceData.forEach(item => {
-        allTimes.add(item.time);
-      });
-    });
-    const timeArray = Array.from(allTimes).sort((a, b) => {
-      const dateA = new Date(a);
-      const dateB = new Date(b);
-      return dateA.getTime() - dateB.getTime();
-    });
+    if (!chartData) return {};
 
-    const option = {
+    return {
       title: {
         text: '余额变化趋势对比',
         left: 'center'
@@ -544,7 +763,7 @@ export const PredictCompare = () => {
         }
       },
       legend: {
-        data: modelsData.map(model => model.modelType),
+        data: chartData.balanceChart.series.map(s => s.name),
         top: 30,
         type: 'scroll' as const,
         width: '80%'
@@ -558,250 +777,37 @@ export const PredictCompare = () => {
       },
       xAxis: {
         type: 'category' as const,
-        data: timeArray,
+        data: chartData.timeArray,
         axisLabel: {
           rotate: 45,
-          interval: Math.floor(timeArray.length / 10)
+          interval: Math.floor(chartData.timeArray.length / 10)
         }
       },
       yAxis: {
         type: 'value' as const,
         name: '余额'
       },
-      series: modelsData.map((modelData, index) => ({
-        name: modelData.modelType,
+      series: chartData.balanceChart.series.map(series => ({
+        name: series.name,
         type: 'line' as const,
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
         sampling: 'lttb' as const,
-        data: timeArray.map(time => {
-          const dataPoint = modelData.balanceData.find(item => item.time === time);
-          return dataPoint ? dataPoint.balance : null;
-        }),
+        data: series.data,
         itemStyle: {
-          color: generateColor(index)
+          color: series.color
         },
         lineStyle: {
           width: 2
         }
       }))
     };
-
-    return option;
   };
 
-  // 生成最佳余额图配置
-  const getBestBalanceChartOption = () => {
-    if (!modelsData.length) return {};
-
-    const allTimes = new Set<string>();
-    let maxBalance = -Infinity;
-    let minBalance = Infinity;
-
-    // 找出所有时间点
-    modelsData.forEach(modelData => {
-      modelData.winRateData.forEach(item => {
-        console.log('item', item);
-        allTimes.add(item.time);
-      });
-    });
-
-    const timeArray = Array.from(allTimes).sort((a, b) => {
-      const dateA = new Date(a);
-      const dateB = new Date(b);
-      return dateA.getTime() - dateB.getTime();
-    });
-
-
-    // 计算每个时间点的最佳胜率对应的模型及其余额
-    let currentBalance = 0; // 从0开始累积
-    const bestBalanceData = timeArray.map((time, index) => {
-      let bestRate = 0;
-      let bestModel = '';
-      let bestModelData: ModelData | null = null;
-      
-      // 先找出这个时间点胜率最高的模型
-      for (const modelData of modelsData) {
-        const winRatePoint = modelData.winRateData.find(item => item.time === time);
-        if (winRatePoint && winRatePoint.winRate > bestRate) {
-          bestRate = winRatePoint.winRate;
-          bestModel = modelData.modelType;
-          bestModelData = modelData;
-        }
-      }
-      console.log('bestModelData', bestModelData);
-
-      // 找到最佳模型在这个时间点的预测数据
-      if (bestModelData) {
-        const predictItem = bestModelData.data.find((item: PredictItem) => {
-          const itemDate = new Date(item.guess_time * 1000);
-          const today = new Date();
-          let itemTimeStr;
-
-          if (itemDate.toDateString() === today.toDateString()) {
-            itemTimeStr = itemDate.toLocaleTimeString("zh-CN", {
-              hour: "2-digit",
-              minute: "2-digit",
-              second: "2-digit",
-            });
-          } else {
-            itemTimeStr = itemDate.toLocaleString("zh-CN");
-          }
-          return itemTimeStr === time;
-        });
-        console.log('predictItem', predictItem);
-
-        if (predictItem && predictItem.ext_result) {
-          const guessResult = formatGuessResult(predictItem.guess_result);
-          if (guessResult) {
-            // 计算这一期的输赢
-            const balanceResult = calculateBalanceChange(
-              guessResult,
-              predictItem.ext_result,
-              betConfig,
-              winType
-            );
-            currentBalance += balanceResult.balance;
-          }
-        }
-      }
-
-      // 更新全局最大最小值
-      if (currentBalance > maxBalance) maxBalance = currentBalance;
-      if (currentBalance < minBalance) minBalance = currentBalance;
-
-      // 检查是否是模型切换点
-      let isChangePoint = false;
-      if (index > 0) {
-        const prevTime = timeArray[index - 1];
-        let prevBestModel = '';
-        let prevBestRate = 0;
-        
-        modelsData.forEach(modelData => {
-          const prevWinRatePoint = modelData.winRateData.find(item => item.time === prevTime);
-          if (prevWinRatePoint && prevWinRatePoint.winRate > prevBestRate) {
-            prevBestRate = prevWinRatePoint.winRate;
-            prevBestModel = modelData.modelType;
-          }
-        });
-
-        isChangePoint = prevBestModel !== bestModel;
-      }
-
-      return {
-        time,
-        balance: currentBalance,
-        model: bestModel,
-        isChangePoint
-      };
-    });
-
-    // 计算Y轴范围，各扩展5%
-    const range = maxBalance - minBalance;
-    const yAxisMin = minBalance - range * 0.05;
-    const yAxisMax = maxBalance + range * 0.05;
-
-    return {
-      title: {
-        text: '最佳胜率模型对应余额趋势',
-        left: 'center'
-      },
-      tooltip: {
-        trigger: 'axis' as const,
-        formatter: function(params: any) {
-          if (!Array.isArray(params)) return '';
-          const dataPoint = bestBalanceData.find(d => d.time === params[0].name);
-          if (!dataPoint) return '';
-          
-          return `${params[0].name}<br/>
-                  最佳模型: ${dataPoint.model}<br/>
-                  余额: ${dataPoint.balance.toFixed(2)}
-                  ${dataPoint.isChangePoint ? '<br/><span style="color: #ff4d4f">模型切换点</span>' : ''}`;
-        }
-      },
-      grid: {
-        left: '3%',
-        right: '4%',
-        bottom: '3%',
-        top: 100,
-        containLabel: true
-      },
-      xAxis: {
-        type: 'category' as const,
-        data: timeArray,
-        axisLabel: {
-          rotate: 45,
-          interval: Math.floor(timeArray.length / 10)
-        }
-      },
-      yAxis: {
-        type: 'value' as const,
-        name: '余额',
-        min: yAxisMin,
-        max: yAxisMax
-      },
-      series: [
-        {
-          name: '最佳余额',
-          type: 'line' as const,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: (val: any, params: any) => {
-            return bestBalanceData[params.dataIndex].isChangePoint ? 10 : 6;
-          },
-          data: bestBalanceData.map(item => ({
-            value: item.balance,
-            itemStyle: {
-              color: item.isChangePoint ? '#ff4d4f' : '#1890ff'
-            }
-          })),
-          lineStyle: {
-            width: 2,
-            color: '#1890ff'
-          },
-          markPoint: {
-            symbol: 'circle',
-            symbolSize: 8,
-            data: bestBalanceData
-              .filter(item => item.isChangePoint)
-              .map(item => ({
-                name: '切换点',
-                coord: [item.time, item.balance],
-                itemStyle: {
-                  color: '#ff4d4f'
-                }
-              }))
-          }
-        }
-      ]
-    };
-  };
-
-  // 渲染胜率趋势图配置
+  // 渲染胜率趋势图
   const getWinRateChartOption = () => {
-    const allTimes = new Set<string>();
-    let maxWinRate = 0;
-    let minWinRate = 100;
-
-    // 找出所有数据中的最大值和最小值
-    modelsData.forEach(modelData => {
-      modelData.winRateData.forEach(item => {
-        allTimes.add(item.time);
-        if (item.winRate > maxWinRate) maxWinRate = item.winRate;
-        if (item.winRate < minWinRate) minWinRate = item.winRate;
-      });
-    });
-
-    // 计算Y轴范围，各扩展5%
-    const yAxisMin = Math.max(0, minWinRate - 5);
-    const yAxisMax = Math.min(100, maxWinRate + 5);
-
-    const timeArray = Array.from(allTimes).sort((a, b) => {
-      const dateA = new Date(a);
-      const dateB = new Date(b);
-      return dateA.getTime() - dateB.getTime();
-    });
+    if (!chartData) return {};
 
     return {
       title: {
@@ -824,7 +830,7 @@ export const PredictCompare = () => {
         }
       },
       legend: {
-        data: modelsData.map(model => model.modelType),
+        data: chartData.winRateChart.series.map(s => s.name),
         top: 30,
         type: 'scroll' as const,
         width: '80%'
@@ -838,31 +844,28 @@ export const PredictCompare = () => {
       },
       xAxis: {
         type: 'category' as const,
-        data: timeArray,
+        data: chartData.timeArray,
         axisLabel: {
           rotate: 45,
-          interval: Math.floor(timeArray.length / 10)
+          interval: Math.floor(chartData.timeArray.length / 10)
         }
       },
       yAxis: {
         type: 'value' as const,
         name: '胜率(%)',
-        min: yAxisMin,
-        max: yAxisMax
+        min: chartData.winRateChart.yAxisMin,
+        max: chartData.winRateChart.yAxisMax
       },
-      series: modelsData.map((modelData, index) => ({
-        name: modelData.modelType,
+      series: chartData.winRateChart.series.map(series => ({
+        name: series.name,
         type: 'line' as const,
         smooth: true,
         symbol: 'circle',
         symbolSize: 6,
         sampling: 'lttb' as const,
-        data: timeArray.map(time => {
-          const dataPoint = modelData.winRateData.find(item => item.time === time);
-          return dataPoint ? dataPoint.winRate : null;
-        }),
+        data: series.data,
         itemStyle: {
-          color: generateColor(index)
+          color: series.color
         },
         lineStyle: {
           width: 2
@@ -871,73 +874,89 @@ export const PredictCompare = () => {
     };
   };
 
+  // 生成最佳余额图配置
+  const getBestBalanceChartOption = () => {
+    if (!chartData) return {};
+
+    return {
+      title: {
+        text: '最佳胜率模型对应余额趋势',
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis' as const,
+        formatter: function(params: any) {
+          if (!Array.isArray(params)) return '';
+          const dataPoint = chartData.bestBalanceChart.data.find(d => d.time === params[0].name);
+          if (!dataPoint) return '';
+          
+          return `${params[0].name}<br/>
+                  最佳模型: ${dataPoint.model}<br/>
+                  余额: ${dataPoint.balance.toFixed(2)}
+                  ${dataPoint.isChangePoint ? '<br/><span style="color: #ff4d4f">模型切换点</span>' : ''}`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 100,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: chartData.bestBalanceChart.timeArray,
+        axisLabel: {
+          rotate: 45,
+          interval: Math.floor(chartData.bestBalanceChart.timeArray.length / 10)
+        }
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: '余额',
+        min: chartData.bestBalanceChart.yAxisMin,
+        max: chartData.bestBalanceChart.yAxisMax
+      },
+      series: [
+        {
+          name: '最佳余额',
+          type: 'line' as const,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: (val: any, params: any) => {
+            return chartData.bestBalanceChart.data[params.dataIndex].isChangePoint ? 10 : 6;
+          },
+          data: chartData.bestBalanceChart.data.map(item => ({
+            value: item.balance,
+            itemStyle: {
+              color: item.isChangePoint ? '#ff4d4f' : '#1890ff'
+            }
+          })),
+          lineStyle: {
+            width: 2,
+            color: '#1890ff'
+          },
+          markPoint: {
+            symbol: 'circle',
+            symbolSize: 8,
+            data: chartData.bestBalanceChart.data
+              .filter(item => item.isChangePoint)
+              .map(item => ({
+                name: '切换点',
+                coord: [item.time, item.balance],
+                itemStyle: {
+                  color: '#ff4d4f'
+                }
+              }))
+          }
+        }
+      ]
+    };
+  };
+
   // 生成最佳胜率图配置
   const getBestWinRateChartOption = () => {
-    if (!modelsData.length) return {};
-
-    const allTimes = new Set<string>();
-    let maxWinRate = 0;
-    let minWinRate = 100;
-
-    // 找出所有时间点
-    modelsData.forEach(modelData => {
-      modelData.winRateData.forEach(item => {
-        allTimes.add(item.time);
-      });
-    });
-
-    const timeArray = Array.from(allTimes).sort((a, b) => {
-      const dateA = new Date(a);
-      const dateB = new Date(b);
-      return dateA.getTime() - dateB.getTime();
-    });
-
-    // 计算每个时间点的最佳胜率和对应模型
-    const bestRateData = timeArray.map((time, index) => {
-      let bestRate = 0;
-      let bestModel = '';
-      
-      modelsData.forEach(modelData => {
-        const dataPoint = modelData.winRateData.find(item => item.time === time);
-        if (dataPoint && dataPoint.winRate > bestRate) {
-          bestRate = dataPoint.winRate;
-          bestModel = modelData.modelType;
-        }
-      });
-
-      // 更新全局最大最小值
-      if (bestRate > maxWinRate) maxWinRate = bestRate;
-      if (bestRate < minWinRate) minWinRate = bestRate;
-
-      // 检查是否是模型切换点
-      let isChangePoint = false;
-      if (index > 0) {
-        const prevTime = timeArray[index - 1];
-        let prevBestModel = '';
-        let prevBestRate = 0;
-        
-        modelsData.forEach(modelData => {
-          const prevDataPoint = modelData.winRateData.find(item => item.time === prevTime);
-          if (prevDataPoint && prevDataPoint.winRate > prevBestRate) {
-            prevBestRate = prevDataPoint.winRate;
-            prevBestModel = modelData.modelType;
-          }
-        });
-
-        isChangePoint = prevBestModel !== bestModel;
-      }
-
-      return {
-        time,
-        winRate: bestRate,
-        model: bestModel,
-        isChangePoint
-      };
-    });
-
-    // 计算Y轴范围，各扩展5%
-    const yAxisMin = Math.max(0, minWinRate - 5);
-    const yAxisMax = Math.min(100, maxWinRate + 5);
+    if (!chartData) return {};
 
     return {
       title: {
@@ -948,7 +967,7 @@ export const PredictCompare = () => {
         trigger: 'axis' as const,
         formatter: function(params: any) {
           if (!Array.isArray(params)) return '';
-          const dataPoint = bestRateData.find(d => d.time === params[0].name);
+          const dataPoint = chartData.bestWinRateChart.data.find(d => d.time === params[0].name);
           if (!dataPoint) return '';
           
           return `${params[0].name}<br/>
@@ -966,17 +985,17 @@ export const PredictCompare = () => {
       },
       xAxis: {
         type: 'category' as const,
-        data: timeArray,
+        data: chartData.bestWinRateChart.timeArray,
         axisLabel: {
           rotate: 45,
-          interval: Math.floor(timeArray.length / 10)
+          interval: Math.floor(chartData.bestWinRateChart.timeArray.length / 10)
         }
       },
       yAxis: {
         type: 'value' as const,
         name: '胜率(%)',
-        min: yAxisMin,
-        max: yAxisMax
+        min: chartData.bestWinRateChart.yAxisMin,
+        max: chartData.bestWinRateChart.yAxisMax
       },
       series: [
         {
@@ -985,9 +1004,9 @@ export const PredictCompare = () => {
           smooth: true,
           symbol: 'circle',
           symbolSize: (val: any, params: any) => {
-            return bestRateData[params.dataIndex].isChangePoint ? 10 : 6;
+            return chartData.bestWinRateChart.data[params.dataIndex].isChangePoint ? 10 : 6;
           },
-          data: bestRateData.map(item => ({
+          data: chartData.bestWinRateChart.data.map(item => ({
             value: item.winRate,
             itemStyle: {
               color: item.isChangePoint ? '#ff4d4f' : '#52c41a'
@@ -1000,7 +1019,7 @@ export const PredictCompare = () => {
           markPoint: {
             symbol: 'circle',
             symbolSize: 8,
-            data: bestRateData
+            data: chartData.bestWinRateChart.data
               .filter(item => item.isChangePoint)
               .map(item => ({
                 name: '切换点',

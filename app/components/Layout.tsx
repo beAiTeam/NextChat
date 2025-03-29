@@ -1,20 +1,21 @@
 import {
-    AppstoreOutlined,
-    FileSearchOutlined,
-    FireOutlined,
-    LineChartOutlined,
-    MenuFoldOutlined,
-    MenuUnfoldOutlined, MergeOutlined,
-    MessageOutlined, PrinterOutlined,
-    RobotOutlined,
-    RocketOutlined,
-    SettingOutlined,
-    ToolOutlined,
-    TrophyOutlined
+  AppstoreOutlined,
+  FileSearchOutlined,
+  FireOutlined,
+  LineChartOutlined,
+  MenuFoldOutlined,
+  MenuUnfoldOutlined, MergeOutlined,
+  MessageOutlined, PrinterOutlined,
+  RobotOutlined,
+  RocketOutlined,
+  SettingOutlined,
+  ToolOutlined,
+  TrophyOutlined
 } from '@ant-design/icons';
 import { Layout, Menu } from 'antd';
 import { usePathname, useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import styles from './Layout.module.css';
 
 const { Sider, Content } = Layout;
 
@@ -26,6 +27,17 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   const router = useRouter();
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const userAgent = window.navigator.userAgent.toLowerCase();
+      const mobileKeywords = ['android', 'iphone', 'ipad', 'ipod', 'webos', 'mobile'];
+      setIsMobile(mobileKeywords.some(keyword => userAgent.includes(keyword)));
+    };
+    
+    checkMobile();
+  }, []);
 
   const menuItems = [
     {
@@ -117,13 +129,14 @@ const MainLayout = ({ children }: MainLayoutProps) => {
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
+        className={isMobile ? styles.mobileSider : styles.mainSider}
         theme="light"
         collapsible
         collapsed={collapsed}
         onCollapse={(value) => setCollapsed(value)}
         trigger={null}
       >
-        <div style={{
+        <div className={isMobile ? styles.mobileHeader : styles.mainHeader} style={{
           height: '64px',
           display: 'flex',
           marginLeft: '16px',
@@ -152,7 +165,15 @@ const MainLayout = ({ children }: MainLayoutProps) => {
         />
       </Sider>
       <Layout>
-        <Content style={{ padding: '24px', background: '#fff',   overflowY: 'auto', height: 'calc(100vh - 48px)' }}>
+        <Content 
+          className={isMobile ? styles.mobileContent : styles.mainContent} 
+          style={{ 
+            padding: '24px', 
+            background: '#fff',   
+            overflowY: 'auto', 
+            height: 'calc(100vh - 48px)'
+          }}
+        >
           {children}
         </Content>
       </Layout>
