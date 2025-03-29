@@ -32,10 +32,10 @@ export const checkPeriodMatch = (prediction: string, drawResult: DrawResult): bo
 
   // 检查第一位数字是否匹配
   const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-  
+
   // 获取配置: 选项1(option1)仅检查第一位，选项2(option2)检查第一位和任一其他位
   let matchCondition = 'option2'; // 默认使用选项2
-  
+
   try {
     if (typeof window !== "undefined") {
       const storage = safeLocalStorage();
@@ -47,16 +47,16 @@ export const checkPeriodMatch = (prediction: string, drawResult: DrawResult): bo
   } catch (e) {
     console.error("Failed to get match condition config:", e);
   }
-  
+
   // 如果是选项1，只需要第一位匹配即可
   if (matchCondition === 'option1') {
     return isFirstDigitMatched;
   }
-  
+
   // 选项2：需要第一位和任一其他位匹配
   // 创建一个新的数组，排除掉第一位匹配的数字
   const remainingDigits = fullNumberDigits.filter(digit => digit !== firstDigitOfPrediction);
-  
+
   // 检查剩余4位中是否有任何一位在剩余的开奖号码中
   const isAnyLastFourDigitsMatched = lastFourDigits.split('').some(digit =>
     remainingDigits.includes(digit)
@@ -74,7 +74,7 @@ export const checkPeriodMatchForOneShot = (prediction: string, drawResult: DrawR
 
   // 否则继续检查原有条件
   const isFirstDigitMatched = fullNumberDigits.includes(firstDigitOfPrediction);
-   
+
 
   return isFirstDigitMatched;
 };
@@ -142,7 +142,7 @@ export const calculateBetProfit = (prediction: string, drawResults: DrawResult[]
   let betDetails = [];
   let lossCount = 0; // 记录连续输的次数
   let hasWon = false; // 记录是否已经中奖
-  
+
   // 获取是否中奖后继续投注的配置
   let continueBetting = false; // 默认中奖后不继续投注
   try {
@@ -166,7 +166,7 @@ export const calculateBetProfit = (prediction: string, drawResults: DrawResult[]
 
     const isWin = checkPeriodMatch(prediction, drawResults[i]);
     // const isWin = checkPeriodMatchForOneShot(prediction, drawResults[i]);
-    
+
     if (isWin) {
       // 赢了，获得赔率倍数的收益
       const winAmount = Math.floor(currentBet * BETTING_ODDS * 100) / 100; // 保留两位小数
@@ -196,7 +196,7 @@ export const calculateTotalProfit = (data: any[]): number => {
     );
     return total + betResult.profit;
   }, 0);
-  
+
   return Math.floor(total); // 返回整数
 };
 
@@ -214,7 +214,7 @@ export interface BalanceResult {
 }
 
 export const calculateBalanceChange = (
-  prediction: string, 
+  prediction: string,
   drawResults: DrawResult[] | null,
   betConfig: BetConfig
 ): BalanceResult => {
@@ -226,7 +226,7 @@ export const calculateBalanceChange = (
   }
 
   // 添加长度检查，必须等于3才计算
-  if (drawResults.length === 0 ) {
+  if (drawResults.length !== 3) {
     return {
       balance: 0,
       details: "等待开奖"
@@ -237,7 +237,7 @@ export const calculateBalanceChange = (
   let totalBalance = 0;
   let balanceDetails = [];
   let hasWon = false;
-  
+
   // 获取是否中奖后继续投注的配置
   let continueBetting = false; // 默认中奖后不继续投注
   try {
@@ -258,7 +258,7 @@ export const calculateBalanceChange = (
     if (hasWon && !continueBetting) break;
 
     const isWin = checkPeriodMatch(prediction, drawResults[i]);
-    
+
     if (isWin) {
       if (i === 0) {
         // 第一期中奖
@@ -298,6 +298,6 @@ export const calculateTotalBalance = (data: any[], betConfig: BetConfig): number
     );
     return total + balanceResult.balance;
   }, 0);
-  
+
   return Math.floor(total); // 返回整数
 };
