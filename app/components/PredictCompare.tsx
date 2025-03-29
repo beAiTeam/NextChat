@@ -132,16 +132,37 @@ export const PredictCompare = () => {
     const allItems = [...baseItems, ...items].sort((a, b) => a.guess_time - b.guess_time);
     
     // 只对展示数据的时间点生成胜率数据
-    const winRateData = items.map((item) => {
+    const winRateData = items.map(currentItem => {
       // 找到当前项在完整数据中的位置
-      const currentIndex = allItems.findIndex(i => i.guess_time === item.guess_time);
+      const currentIndex = allItems.findIndex(i => i.guess_time === currentItem.guess_time);
       if (currentIndex === -1) return null;
       
-      // 计算从开始到当前位置的所有数据的胜率
-      const itemsToCalculate = allItems.slice(0, currentIndex + 1);
-      const winRate = calculateWinRate(itemsToCalculate, currentWinType);
+      // 计算滑动窗口的起始位置（包括当前位置）
+      const windowStartIndex = Math.max(0, currentIndex - baseDataLimit + 1);
+      // 获取窗口内的所有数据
+      const windowItems = allItems.slice(windowStartIndex, currentIndex + 1);
+      
+      // 计算窗口内的胜率
+      const validItems = windowItems.filter(
+        (item) => item.ext_result && item.ext_result.length > 0
+      );
 
-      const date = new Date(item.guess_time * 1000);
+      const winCount = validItems.filter((item) => {
+        const guessResult = formatGuessResult(item.guess_result);
+        if (!guessResult || !item.ext_result) return false;
+
+        if (currentWinType === "current") {
+          return checkCurrentPeriodMatch(guessResult, item.ext_result, item.guess_period);
+        } else if (currentWinType === "two") {
+          return checkTwoPeriodsMatch(guessResult, item.ext_result);
+        } else {
+          return checkThreePeriodsMatch(guessResult, item.ext_result);
+        }
+      }).length;
+
+      const winRate = validItems.length > 0 ? (winCount / validItems.length) * 100 : 0;
+
+      const date = new Date(currentItem.guess_time * 1000);
       const today = new Date();
       let timeStr;
 
@@ -152,7 +173,11 @@ export const PredictCompare = () => {
           second: "2-digit",
         });
       } else {
-        timeStr = date.toLocaleString("zh-CN");
+        timeStr = date.toLocaleString("zh-CN", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
       }
 
       return {
@@ -291,10 +316,44 @@ export const PredictCompare = () => {
         LotAiGuessType.Ai5_Gemini_Plus
       ];
       
+      // 计算需要请求的总数据量
+      // 对于每个点，我们需要往前取baseDataLimit个数据来计算胜率
+      // 所以对于dataLimit个点，我们需要请求 dataLimit + baseDataLimit 个数据
+      const totalDataNeeded = dataLimit + baseDataLimit;
+      
       const results = await Promise.all(
         modelTypes.map(async modelType => {
           try {
-            return await fetchModelData(modelType);
+            const params: any = {
+              page: 1,
+              page_size: totalDataNeeded,
+              guess_type: modelType,
+            };
+
+            // 添加时间范围参数
+            if (timeRange[0] && timeRange[1]) {
+              params.start_time = Math.floor(timeRange[0].valueOf() / 1000);
+              params.end_time = Math.floor(timeRange[1].valueOf() / 1000);
+            }
+
+            const response = await axiosServices.get("/client/lot/get_ai_guess_list", { params });
+
+            const allData = response.data.data.data;
+            // 由于接口返回的是倒序，我们需要先反转数据
+            const sortedData = [...allData].reverse();
+            
+            // 从sortedData中取出最后dataLimit条作为显示数据
+            const displayData = sortedData.slice(sortedData.length - dataLimit);
+            // 对于每个显示数据点，我们需要它之前的baseDataLimit条数据来计算胜率
+            const baseData = sortedData.slice(0, sortedData.length - dataLimit);
+
+            return {
+              modelType,
+              data: displayData,
+              baseData: baseData,
+              balanceData: generateBalanceData(displayData),
+              winRateData: generateWinRateData(displayData, baseData, winType)
+            };
           } catch (error) {
             console.error(`获取模型 ${modelType} 数据失败:`, error);
             return null;
@@ -530,6 +589,193 @@ export const PredictCompare = () => {
     };
 
     return option;
+  };
+
+  // 生成最佳余额图配置
+  const getBestBalanceChartOption = () => {
+    if (!modelsData.length) return {};
+
+    const allTimes = new Set<string>();
+    let maxBalance = -Infinity;
+    let minBalance = Infinity;
+
+    // 找出所有时间点
+    modelsData.forEach(modelData => {
+      modelData.winRateData.forEach(item => {
+        console.log('item', item);
+        allTimes.add(item.time);
+      });
+    });
+
+    const timeArray = Array.from(allTimes).sort((a, b) => {
+      const dateA = new Date(a);
+      const dateB = new Date(b);
+      return dateA.getTime() - dateB.getTime();
+    });
+
+
+    // 计算每个时间点的最佳胜率对应的模型及其余额
+    let currentBalance = 0; // 从0开始累积
+    const bestBalanceData = timeArray.map((time, index) => {
+      let bestRate = 0;
+      let bestModel = '';
+      let bestModelData: ModelData | null = null;
+      
+      // 先找出这个时间点胜率最高的模型
+      for (const modelData of modelsData) {
+        const winRatePoint = modelData.winRateData.find(item => item.time === time);
+        if (winRatePoint && winRatePoint.winRate > bestRate) {
+          bestRate = winRatePoint.winRate;
+          bestModel = modelData.modelType;
+          bestModelData = modelData;
+        }
+      }
+      console.log('bestModelData', bestModelData);
+
+      // 找到最佳模型在这个时间点的预测数据
+      if (bestModelData) {
+        const predictItem = bestModelData.data.find((item: PredictItem) => {
+          const itemDate = new Date(item.guess_time * 1000);
+          const today = new Date();
+          let itemTimeStr;
+
+          if (itemDate.toDateString() === today.toDateString()) {
+            itemTimeStr = itemDate.toLocaleTimeString("zh-CN", {
+              hour: "2-digit",
+              minute: "2-digit",
+              second: "2-digit",
+            });
+          } else {
+            itemTimeStr = itemDate.toLocaleString("zh-CN");
+          }
+          return itemTimeStr === time;
+        });
+        console.log('predictItem', predictItem);
+
+        if (predictItem && predictItem.ext_result) {
+          const guessResult = formatGuessResult(predictItem.guess_result);
+          if (guessResult) {
+            // 计算这一期的输赢
+            const balanceResult = calculateBalanceChange(
+              guessResult,
+              predictItem.ext_result,
+              betConfig,
+              winType
+            );
+            currentBalance += balanceResult.balance;
+          }
+        }
+      }
+
+      // 更新全局最大最小值
+      if (currentBalance > maxBalance) maxBalance = currentBalance;
+      if (currentBalance < minBalance) minBalance = currentBalance;
+
+      // 检查是否是模型切换点
+      let isChangePoint = false;
+      if (index > 0) {
+        const prevTime = timeArray[index - 1];
+        let prevBestModel = '';
+        let prevBestRate = 0;
+        
+        modelsData.forEach(modelData => {
+          const prevWinRatePoint = modelData.winRateData.find(item => item.time === prevTime);
+          if (prevWinRatePoint && prevWinRatePoint.winRate > prevBestRate) {
+            prevBestRate = prevWinRatePoint.winRate;
+            prevBestModel = modelData.modelType;
+          }
+        });
+
+        isChangePoint = prevBestModel !== bestModel;
+      }
+
+      return {
+        time,
+        balance: currentBalance,
+        model: bestModel,
+        isChangePoint
+      };
+    });
+
+    // 计算Y轴范围，各扩展5%
+    const range = maxBalance - minBalance;
+    const yAxisMin = minBalance - range * 0.05;
+    const yAxisMax = maxBalance + range * 0.05;
+
+    return {
+      title: {
+        text: '最佳胜率模型对应余额趋势',
+        left: 'center'
+      },
+      tooltip: {
+        trigger: 'axis' as const,
+        formatter: function(params: any) {
+          if (!Array.isArray(params)) return '';
+          const dataPoint = bestBalanceData.find(d => d.time === params[0].name);
+          if (!dataPoint) return '';
+          
+          return `${params[0].name}<br/>
+                  最佳模型: ${dataPoint.model}<br/>
+                  余额: ${dataPoint.balance.toFixed(2)}
+                  ${dataPoint.isChangePoint ? '<br/><span style="color: #ff4d4f">模型切换点</span>' : ''}`;
+        }
+      },
+      grid: {
+        left: '3%',
+        right: '4%',
+        bottom: '3%',
+        top: 100,
+        containLabel: true
+      },
+      xAxis: {
+        type: 'category' as const,
+        data: timeArray,
+        axisLabel: {
+          rotate: 45,
+          interval: Math.floor(timeArray.length / 10)
+        }
+      },
+      yAxis: {
+        type: 'value' as const,
+        name: '余额',
+        min: yAxisMin,
+        max: yAxisMax
+      },
+      series: [
+        {
+          name: '最佳余额',
+          type: 'line' as const,
+          smooth: true,
+          symbol: 'circle',
+          symbolSize: (val: any, params: any) => {
+            return bestBalanceData[params.dataIndex].isChangePoint ? 10 : 6;
+          },
+          data: bestBalanceData.map(item => ({
+            value: item.balance,
+            itemStyle: {
+              color: item.isChangePoint ? '#ff4d4f' : '#1890ff'
+            }
+          })),
+          lineStyle: {
+            width: 2,
+            color: '#1890ff'
+          },
+          markPoint: {
+            symbol: 'circle',
+            symbolSize: 8,
+            data: bestBalanceData
+              .filter(item => item.isChangePoint)
+              .map(item => ({
+                name: '切换点',
+                coord: [item.time, item.balance],
+                itemStyle: {
+                  color: '#ff4d4f'
+                }
+              }))
+          }
+        }
+      ]
+    };
   };
 
   // 渲染胜率趋势图配置
@@ -938,6 +1184,9 @@ export const PredictCompare = () => {
             <>
               <Card title="余额变化趋势">
                 <ReactECharts option={renderBalanceChart()} style={{ height: '600px' }} />
+                <div style={{ marginTop: '20px' }}>
+                 
+                </div>
               </Card>
               <Card 
                 title="胜率趋势"
@@ -971,6 +1220,9 @@ export const PredictCompare = () => {
                 </div>
                 <ReactECharts option={getWinRateChartOption()} style={{ height: '600px' }} />
                 
+                <div style={{ marginTop: '20px' }}>
+                <ReactECharts option={getBestBalanceChartOption()} style={{ height: '600px' }} />
+                </div>
                 <div style={{ marginTop: '20px' }}>
                   <ReactECharts option={getBestWinRateChartOption()} style={{ height: '600px' }} />
                 </div>
