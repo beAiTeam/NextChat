@@ -1,0 +1,31 @@
+.mainContent {
+  padding: 24px;
+}
+
+.mobileContent {
+  padding: 24px;
+  padding-top: 154px !important;
+}
+
+.mainSider {
+}
+
+.mobileSider {
+  padding-top: 30px;
+}
+
+.mainHeader {
+  height: 64px;
+  display: flex;
+  align-items: center;
+}
+
+.mobileHeader {
+  composes: mainHeader;
+}
+
+@media screen and (max-width: 768px) {
+  .mainContent {
+    padding-top: 54px !important;
+  }
+} 
