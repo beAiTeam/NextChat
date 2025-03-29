@@ -893,7 +893,7 @@ export const PredictCompare = () => {
           return `${params[0].name}<br/>
                   最佳模型: ${dataPoint.model}<br/>
                   余额: ${dataPoint.balance.toFixed(2)}
-                  ${dataPoint.isChangePoint ? '<br/><span style="color: #ff4d4f">模型切换点</span>' : ''}`;
+                  ${dataPoint.isChangePoint ? '<br/><span style="color: #722ed1">模型切换点</span>' : ''}`;
         }
       },
       grid: {
@@ -929,7 +929,7 @@ export const PredictCompare = () => {
           data: chartData.bestBalanceChart.data.map(item => ({
             value: item.balance,
             itemStyle: {
-              color: item.isChangePoint ? '#ff4d4f' : '#1890ff'
+              color: item.isChangePoint ? '#722ed1' : '#1890ff'
             }
           })),
           lineStyle: {
@@ -945,7 +945,7 @@ export const PredictCompare = () => {
                 name: '切换点',
                 coord: [item.time, item.balance],
                 itemStyle: {
-                  color: '#ff4d4f'
+                  color: '#722ed1'
                 }
               }))
           }
@@ -957,6 +957,72 @@ export const PredictCompare = () => {
   // 生成最佳胜率图配置
   const getBestWinRateChartOption = () => {
     if (!chartData) return {};
+
+    // 创建模型到颜色的映射
+    const modelColorMap = Object.fromEntries(
+      chartData.winRateChart.series.map(series => [series.name, series.color])
+    );
+
+    // 创建分段数据
+    const segments: Array<{
+      name: string;
+      type: 'line';
+      smooth: boolean;
+      symbol: string;
+      symbolSize: number;
+      data: Array<number | null>;
+      lineStyle: { color: string; width: number };
+    }> = [];
+
+    // 为每个不同的模型创建一个分段
+    let currentModel = '';
+    let currentSegment: Array<number | null> = [];
+    let currentStartIndex = 0;
+
+    chartData.bestWinRateChart.data.forEach((item, index) => {
+      if (currentModel !== item.model) {
+        // 如果有之前的分段，保存它
+        if (currentModel !== '') {
+          segments.push({
+            name: `${currentModel}段`,
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 6,
+            data: chartData.bestWinRateChart.timeArray.map((_, i) => 
+              i >= currentStartIndex && i < index ? chartData.bestWinRateChart.data[i].winRate : null
+            ),
+            lineStyle: {
+              color: modelColorMap[currentModel] || '#52c41a',
+              width: 2
+            }
+          });
+        }
+        // 开始新的分段
+        currentModel = item.model;
+        currentStartIndex = index;
+        currentSegment = [];
+      }
+      currentSegment.push(item.winRate);
+    });
+
+    // 添加最后一个分段
+    if (currentSegment.length > 0) {
+      segments.push({
+        name: `${currentModel}段`,
+        type: 'line',
+        smooth: true,
+        symbol: 'circle',
+        symbolSize: 6,
+        data: chartData.bestWinRateChart.timeArray.map((_, i) => 
+          i >= currentStartIndex ? chartData.bestWinRateChart.data[i].winRate : null
+        ),
+        lineStyle: {
+          color: modelColorMap[currentModel] || '#52c41a',
+          width: 2
+        }
+      });
+    }
 
     return {
       title: {
@@ -973,8 +1039,11 @@ export const PredictCompare = () => {
           return `${params[0].name}<br/>
                   最佳模型: ${dataPoint.model}<br/>
                   胜率: ${dataPoint.winRate.toFixed(2)}%
-                  ${dataPoint.isChangePoint ? '<br/><span style="color: #ff4d4f">模型切换点</span>' : ''}`;
+                  ${dataPoint.isChangePoint ? '<br/><span style="color: #722ed1">模型切换点</span>' : ''}`;
         }
+      },
+      legend: {
+        show: false
       },
       grid: {
         left: '3%',
@@ -998,34 +1067,39 @@ export const PredictCompare = () => {
         max: chartData.bestWinRateChart.yAxisMax
       },
       series: [
+        ...segments,
         {
-          name: '最佳胜率',
-          type: 'line' as const,
-          smooth: true,
-          symbol: 'circle',
-          symbolSize: (val: any, params: any) => {
-            return chartData.bestWinRateChart.data[params.dataIndex].isChangePoint ? 10 : 6;
-          },
-          data: chartData.bestWinRateChart.data.map(item => ({
-            value: item.winRate,
-            itemStyle: {
-              color: item.isChangePoint ? '#ff4d4f' : '#52c41a'
-            }
-          })),
-          lineStyle: {
-            width: 2,
-            color: '#52c41a'
-          },
+          name: '切换点',
+          type: 'scatter' as const,
+          symbolSize: 10,
+          data: chartData.bestWinRateChart.data
+            .filter(item => item.isChangePoint)
+            .map(item => ({
+              value: [item.time, item.winRate],
+              itemStyle: {
+                color: '#722ed1'
+              },
+              emphasis: {
+                itemStyle: {
+                  color: '#722ed1',
+                  borderColor: '#fff',
+                  borderWidth: 2
+                }
+              }
+            })),
           markPoint: {
             symbol: 'circle',
-            symbolSize: 8,
+            symbolSize: 10,
+            itemStyle: {
+              color: '#722ed1'
+            },
             data: chartData.bestWinRateChart.data
               .filter(item => item.isChangePoint)
               .map(item => ({
                 name: '切换点',
                 coord: [item.time, item.winRate],
                 itemStyle: {
-                  color: '#ff4d4f'
+                  color: '#722ed1'
                 }
               }))
           }
