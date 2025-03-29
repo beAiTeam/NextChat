@@ -226,7 +226,7 @@ export const calculateBalanceChange = (
   }
 
   // 添加长度检查，必须等于3才计算
-  if (drawResults.length !== 3) {
+  if (drawResults.length === 0 ) {
     return {
       balance: 0,
       details: "等待开奖"
